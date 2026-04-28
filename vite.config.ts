@@ -540,6 +540,7 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       host: process.env.VITE_DEV_HOST || 'localhost',
+      port: 5557,
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin',
         'Cross-Origin-Embedder-Policy': 'require-corp',
