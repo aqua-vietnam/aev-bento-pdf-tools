@@ -1,6 +1,6 @@
 {
-    "name": "BentoPDF",
-    "short_name": "BentoPDF",
+    "name": "AEV-PDF",
+    "short_name": "AEV-PDF",
     "description": "Free online PDF tools - Privacy-first PDF toolkit that works 100% in your browser",
     "start_url": "/",
     "display": "standalone",

@@ -679,7 +679,7 @@
   },
   "digitalSignPdf": {
     "name": "Digital Signature PDF",
-    "pageTitle": "Digital Signature PDF - Add Cryptographic Signature | BentoPDF",
+    "pageTitle": "Digital Signature PDF - Add Cryptographic Signature | AEV-PDF",
     "subtitle": "Add a cryptographic digital signature to your PDF using X.509 certificates. Supports PKCS#12 (.pfx, .p12) and PEM formats. Your private key never leaves your browser.",
     "certificateSection": "Certificate",
     "uploadCert": "Upload certificate (.pfx, .p12)",
@@ -701,12 +701,12 @@
   },
   "validateSignaturePdf": {
     "name": "Validate PDF Signature",
-    "pageTitle": "Validate PDF Signature - Verify Digital Signatures | BentoPDF",
+    "pageTitle": "Validate PDF Signature - Verify Digital Signatures | AEV-PDF",
     "subtitle": "Verify digital signatures in your PDF files. Check certificate validity, view signer details, and confirm document integrity. All processing happens in your browser."
   },
   "timestampPdf": {
     "name": "PDF Zaman Damgası",
-    "pageTitle": "PDF Zaman Damgası Ücretsiz - RFC 3161 Belge Zaman Damgası | BentoPDF",
+    "pageTitle": "PDF Zaman Damgası Ücretsiz - RFC 3161 Belge Zaman Damgası | AEV-PDF",
     "subtitle": "Güvenilir bir TSA sunucusu aracılığıyla PDF'nize RFC 3161 zaman damgası ekleyin. Belgenizin belirli bir zamanda var olduğunu kanıtlar. Sertifika gerekmez.",
     "tsaSectionTitle": "Zaman Damgası Sunucusu (TSA)",
     "selectTsa": "Bir TSA sunucusu seçin",

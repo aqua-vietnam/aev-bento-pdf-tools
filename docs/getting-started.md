@@ -1,16 +1,16 @@
 # Getting Started
 
-Welcome to BentoPDF! This guide will help you get up and running quickly.
+Welcome to AEV-PDF! This guide will help you get up and running quickly.
 
-## What is BentoPDF?
+## What is AEV-PDF?
 
-BentoPDF is a free, open-source, privacy-first PDF toolkit that runs **entirely in your browser**. Your files never leave your device—all processing happens locally using WebAssembly (WASM) technology.
+AEV-PDF is a free, open-source, privacy-first PDF toolkit that runs **entirely in your browser**. Your files never leave your device—all processing happens locally using WebAssembly (WASM) technology.
 
 ## Quick Start
 
 ### Option 1: Use the Hosted Version
 
-Visit [bentopdf.com](https://bentopdf.com) to use BentoPDF instantly—no installation required.
+Visit [AEV-PDF.com](https://AEV-PDF.com) to use AEV-PDF instantly—no installation required.
 
 ### Option 2: Self-Host with Docker
 
@@ -25,10 +25,10 @@ Visit [bentopdf.com](https://bentopdf.com) to use BentoPDF instantly—no instal
 
 ```bash
 # Pull and run the Docker image
-docker run -d -p 3000:8080 ghcr.io/alam00000/bentopdf:latest
+docker run -d -p 3000:8080 ghcr.io/alam00000/AEV-PDF:latest
 
 # Or use Docker Compose
-curl -O https://raw.githubusercontent.com/alam00000/bentopdf/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/alam00000/AEV-PDF/main/docker-compose.yml
 docker compose up -d
 ```
 
@@ -41,8 +41,8 @@ Then open `http://localhost:3000` in your browser.
 
 ```bash
 # Clone the repository
-git clone https://github.com/alam00000/bentopdf.git
-cd bentopdf
+git clone https://github.com/alam00000/AEV-PDF.git
+cd AEV-PDF
 
 # Install dependencies
 npm install
@@ -64,7 +64,7 @@ npm run dev
 
 ## Browser Support
 
-BentoPDF works best on modern browsers:
+AEV-PDF works best on modern browsers:
 
 - ✅ Chrome/Edge 90+
 - ✅ Firefox 90+
@@ -73,5 +73,5 @@ BentoPDF works best on modern browsers:
 ## Next Steps
 
 - [Explore all tools](/tools/)
-- [Self-host BentoPDF](/self-hosting/)
+- [Self-host AEV-PDF](/self-hosting/)
 - [Contribute to the project](/contributing)

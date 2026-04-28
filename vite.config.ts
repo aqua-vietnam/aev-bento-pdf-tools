@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import { loadEnv } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'http';
 import http from 'http';
 import https from 'https';
@@ -206,7 +207,7 @@ function buildCorsProxyAllowedHosts(): Set<string> {
     'cdn.jsdelivr.net',
     'fonts.googleapis.com',
     'fonts.gstatic.com',
-    'bentopdf-cors-proxy.bentopdf.workers.dev',
+    'AEV-PDF-cors-proxy.AEV-PDF.workers.dev',
   ]);
 
   const envHostSources = [
@@ -444,7 +445,11 @@ function rewriteHtmlPathsPlugin(): Plugin {
   };
 }
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
+  // Load .env, .env.local, .env.[mode], .env.[mode].local into process.env
+  const env = loadEnv(mode, process.cwd(), '');
+  Object.assign(process.env, env);
+
   const USE_CDN = process.env.VITE_USE_CDN === 'true';
 
   if (USE_CDN) {

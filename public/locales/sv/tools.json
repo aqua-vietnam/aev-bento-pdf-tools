@@ -665,7 +665,7 @@
   },
   "digitalSignPdf": {
     "name": "Digital signatur PDF",
-    "pageTitle": "Digital signatur PDF - Lägg till kryptografisk signatur | BentoPDF",
+    "pageTitle": "Digital signatur PDF - Lägg till kryptografisk signatur | AEV-PDF",
     "subtitle": "Lägg till en kryptografisk digital signatur på din PDF med X.509-certifikat. Stöder PKCS#12 (.pfx, .p12) och PEM-format. Din privata nyckel lämnar aldrig din webbläsare.",
     "certificateSection": "Certifikat",
     "uploadCert": "Ladda upp certifikat (.pfx, .p12)",
@@ -687,12 +687,12 @@
   },
   "validateSignaturePdf": {
     "name": "Validera PDF-signatur",
-    "pageTitle": "Validera PDF-signatur - Verifiera digitala signaturer | BentoPDF",
+    "pageTitle": "Validera PDF-signatur - Verifiera digitala signaturer | AEV-PDF",
     "subtitle": "Verifiera digitala signaturer i dina PDF-filer. Kontrollera certifikatgiltighet, visa signerardetaljer och bekräfta dokumentintegritet. All bearbetning sker i din webbläsare."
   },
   "timestampPdf": {
     "name": "Tidsstämpla PDF",
-    "pageTitle": "Tidsstämpla PDF gratis online - RFC 3161 dokumenttidsstämpel | BentoPDF",
+    "pageTitle": "Tidsstämpla PDF gratis online - RFC 3161 dokumenttidsstämpel | AEV-PDF",
     "subtitle": "Lägg till en RFC 3161 tidsstämpel till din PDF via en betrodd TSA-server. Bevisar att ditt dokument existerade vid en specifik tidpunkt. Inget certifikat krävs.",
     "tsaSectionTitle": "Tidsstämpelserver (TSA)",
     "selectTsa": "Välj en TSA-server",

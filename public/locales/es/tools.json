@@ -665,7 +665,7 @@
   },
   "digitalSignPdf": {
     "name": "Firma Digital PDF",
-    "pageTitle": "Firma Digital PDF - Agregar Firma Criptográfica | BentoPDF",
+    "pageTitle": "Firma Digital PDF - Agregar Firma Criptográfica | AEV-PDF",
     "subtitle": "Agrega una firma digital criptográfica a tu PDF usando certificados X.509. Soporta formatos PKCS#12 (.pfx, .p12) y PEM. Tu clave privada nunca sale de tu navegador.",
     "certificateSection": "Certificado",
     "uploadCert": "Cargar certificado (.pfx, .p12)",
@@ -687,12 +687,12 @@
   },
   "validateSignaturePdf": {
     "name": "Validar Firma PDF",
-    "pageTitle": "Validar Firma PDF - Verificar Firmas Digitales | BentoPDF",
+    "pageTitle": "Validar Firma PDF - Verificar Firmas Digitales | AEV-PDF",
     "subtitle": "Verifica firmas digitales en tus archivos PDF. Comprueba la validez del certificado, ve los detalles del firmante y confirma la integridad del documento."
   },
   "timestampPdf": {
     "name": "Sellar PDF con marca de tiempo",
-    "pageTitle": "Marca de tiempo PDF gratis - Sello RFC 3161 | BentoPDF",
+    "pageTitle": "Marca de tiempo PDF gratis - Sello RFC 3161 | AEV-PDF",
     "subtitle": "Añade una marca de tiempo RFC 3161 a tu PDF mediante un servidor TSA de confianza. Demuestra que tu documento existía en un momento específico. No se requiere certificado.",
     "tsaSectionTitle": "Servidor de marca de tiempo (TSA)",
     "selectTsa": "Seleccionar un servidor TSA",

@@ -1,6 +1,6 @@
 # Deploy with Apache
 
-Host BentoPDF using Apache HTTP Server.
+Host AEV-PDF using Apache HTTP Server.
 
 ## Prerequisites
 
@@ -11,8 +11,8 @@ Host BentoPDF using Apache HTTP Server.
 ## Step 1: Build the Project
 
 ```bash
-git clone https://github.com/alam00000/bentopdf.git
-cd bentopdf
+git clone https://github.com/alam00000/AEV-PDF.git
+cd AEV-PDF
 npm install
 npm run build
 ```
@@ -26,14 +26,14 @@ VITE_BRAND_NAME="AcmePDF" VITE_BRAND_LOGO="images/acme-logo.svg" npm run build
 ## Step 2: Copy Files
 
 ```bash
-sudo mkdir -p /var/www/bentopdf
-sudo cp -r dist/* /var/www/bentopdf/
-sudo chown -R www-data:www-data /var/www/bentopdf
+sudo mkdir -p /var/www/AEV-PDF
+sudo cp -r dist/* /var/www/AEV-PDF/
+sudo chown -R www-data:www-data /var/www/AEV-PDF
 ```
 
 ## Step 3: Apache Configuration
 
-Create `/etc/apache2/sites-available/bentopdf.conf`:
+Create `/etc/apache2/sites-available/AEV-PDF.conf`:
 
 ```apache
 <VirtualHost *:80>
@@ -43,13 +43,13 @@ Create `/etc/apache2/sites-available/bentopdf.conf`:
 
 <VirtualHost *:443>
     ServerName your-domain.com
-    DocumentRoot /var/www/bentopdf
+    DocumentRoot /var/www/AEV-PDF
 
     SSLEngine on
     SSLCertificateFile /etc/letsencrypt/live/your-domain.com/fullchain.pem
     SSLCertificateKeyFile /etc/letsencrypt/live/your-domain.com/privkey.pem
 
-    <Directory /var/www/bentopdf>
+    <Directory /var/www/AEV-PDF>
         Options -Indexes +FollowSymLinks
         AllowOverride All
         Require all granted
@@ -99,7 +99,7 @@ Create `/etc/apache2/sites-available/bentopdf.conf`:
 
 ## Step 4: .htaccess for Routing
 
-Create `/var/www/bentopdf/.htaccess`:
+Create `/var/www/AEV-PDF/.htaccess`:
 
 ```apache
 RewriteEngine On
@@ -152,7 +152,7 @@ sudo a2enmod deflate
 ## Step 6: Enable the Site
 
 ```bash
-sudo a2ensite bentopdf.conf
+sudo a2ensite AEV-PDF.conf
 sudo apache2ctl configtest
 sudo systemctl reload apache2
 ```
@@ -244,6 +244,6 @@ Ensure `mod_headers` is enabled: `sudo a2enmod headers`
 ### Permission Denied
 
 ```bash
-sudo chown -R www-data:www-data /var/www/bentopdf
-sudo chmod -R 755 /var/www/bentopdf
+sudo chown -R www-data:www-data /var/www/AEV-PDF
+sudo chmod -R 755 /var/www/AEV-PDF
 ```

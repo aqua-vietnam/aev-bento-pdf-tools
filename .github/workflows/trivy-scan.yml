@@ -19,9 +19,9 @@ jobs:
     strategy:
       matrix:
         image:
-          - name: bentopdf
+          - name: AEV-PDF
             file: Dockerfile
-          - name: bentopdf-nonroot
+          - name: AEV-PDF-nonroot
             file: Dockerfile.nonroot
     steps:
       - name: Checkout code

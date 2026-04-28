@@ -665,7 +665,7 @@
   },
   "digitalSignPdf": {
     "name": "Signature numérique PDF",
-    "pageTitle": "Signature numérique PDF - Ajouter une signature cryptographique | BentoPDF",
+    "pageTitle": "Signature numérique PDF - Ajouter une signature cryptographique | AEV-PDF",
     "subtitle": "Ajouter une signature numérique cryptographique à votre PDF à l’aide de certificats X.509. Prend en charge les formats PKCS#12 (.pfx, .p12) et PEM. Votre clé privée ne quitte jamais votre navigateur.",
     "certificateSection": "Certificat",
     "uploadCert": "Téléverser un certificat (.pfx, .p12)",
@@ -687,12 +687,12 @@
   },
   "validateSignaturePdf": {
     "name": "Valider la signature PDF",
-    "pageTitle": "Valider la signature PDF - Vérifier les signatures numériques | BentoPDF",
+    "pageTitle": "Valider la signature PDF - Vérifier les signatures numériques | AEV-PDF",
     "subtitle": "Vérifier les signatures numériques de vos fichiers PDF. Contrôlez la validité du certificat, consultez les informations du signataire et confirmez l’intégrité du document. Tout le traitement s’effectue dans votre navigateur."
   },
   "timestampPdf": {
     "name": "Horodater un PDF",
-    "pageTitle": "Horodatage PDF en ligne gratuit - Horodatage RFC 3161 | BentoPDF",
+    "pageTitle": "Horodatage PDF en ligne gratuit - Horodatage RFC 3161 | AEV-PDF",
     "subtitle": "Ajoutez un horodatage RFC 3161 à votre PDF via un serveur d'horodatage (TSA) de confiance. Prouve que votre document existait à un moment précis. Aucun certificat requis.",
     "tsaSectionTitle": "Serveur d'horodatage (TSA)",
     "selectTsa": "Sélectionner un serveur TSA",

@@ -48,18 +48,197 @@ html {
   scroll-behavior: smooth;
 }
 
+/* ============================================================
+   LIGHT THEME OVERRIDES
+   Remaps hardcoded dark Tailwind classes → light equivalents.
+   This avoids editing every individual HTML page.
+   ============================================================ */
+
+/* Text colors */
+.text-white {
+  color: #1e293b !important;
+}
+.text-gray-200 {
+  color: #334155 !important;
+}
+.text-gray-300 {
+  color: #475569 !important;
+}
+.text-gray-400 {
+  color: #64748b !important;
+}
+.text-gray-500 {
+  color: #64748b !important;
+}
+.text-indigo-200 {
+  color: #4f46e5 !important;
+}
+.text-indigo-300 {
+  color: #4338ca !important;
+}
+
+/* Background colors */
+.bg-gray-950 {
+  background-color: #f1f5f9 !important;
+}
+.bg-gray-900 {
+  background-color: #f1f5f9 !important;
+}
+.bg-gray-800 {
+  background-color: #ffffff !important;
+}
+.bg-gray-800\/40 {
+  background-color: rgba(241, 245, 249, 0.7) !important;
+}
+.bg-gray-800\/60 {
+  background-color: rgba(241, 245, 249, 0.9) !important;
+}
+.bg-gray-700 {
+  background-color: #f1f5f9 !important;
+}
+.bg-gray-600 {
+  background-color: #e2e8f0 !important;
+}
+
+/* Hover backgrounds */
+.hover\:bg-gray-800:hover {
+  background-color: #f8fafc !important;
+}
+.hover\:bg-gray-700:hover {
+  background-color: #e2e8f0 !important;
+}
+.hover\:bg-gray-600:hover {
+  background-color: #cbd5e1 !important;
+}
+
+/* Hover text */
+.hover\:text-white:hover {
+  color: #1e293b !important;
+}
+
+/* Borders */
+.border-gray-900 {
+  border-color: #e2e8f0 !important;
+}
+.border-gray-800 {
+  border-color: #e2e8f0 !important;
+}
+.border-gray-700 {
+  border-color: #e2e8f0 !important;
+}
+.border-gray-700\/50 {
+  border-color: rgba(226, 232, 240, 0.8) !important;
+}
+.border-gray-600 {
+  border-color: #cbd5e1 !important;
+}
+
+/* Search bar & inputs */
+#search-bar {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+  border-color: #e2e8f0 !important;
+}
+#search-bar::placeholder {
+  color: #94a3b8 !important;
+}
+#shortcut-search {
+  background-color: #f8fafc !important;
+  color: #1e293b !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Tool interface panel */
+#tool-interface {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Modals */
+#loader-modal > div,
+#alert-modal > div,
+#shortcuts-modal > div {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+#alert-title {
+  color: #1e293b !important;
+}
+#alert-message {
+  color: #475569 !important;
+}
+
+/* Shortcuts modal internals */
+.border-gray-700.flex.border-b {
+  border-color: #e2e8f0 !important;
+}
+#preferences-tab-btn {
+  color: #475569 !important;
+}
+#preferences-tab-btn:hover {
+  color: #1e293b !important;
+}
+
+/* Hero section badge pills */
+#hero-section .rounded-full.bg-gray-800\/40 {
+  background-color: rgba(226, 232, 240, 0.6) !important;
+  border-color: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+/* Feature cards (bg-gray-800 p-6 rounded-lg) */
+#features-section .rounded-lg {
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+#features-section h3.text-white {
+  color: #1e293b !important;
+}
+#features-section p.text-gray-400 {
+  color: #64748b !important;
+}
+
+/* Hero badge (PDF Toolkit pill) */
+.bg-indigo-900 {
+  background-color: #eef2ff !important;
+}
+.text-indigo-300 {
+  color: #4f46e5 !important;
+}
+.border-indigo-400 {
+  border-color: #818cf8 !important;
+}
+
+/* Kbd shortcut badge */
+#shortcut {
+  background-color: #f1f5f9 !important;
+  color: #475569 !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* Settings / preferences panels */
+.bg-gray-900.rounded-lg {
+  background-color: #f8fafc !important;
+}
+
+/* Scrollbar track in shortcuts list */
+#shortcuts-list {
+  background-color: transparent;
+}
+
 body {
   font-family: 'DM Sans', sans-serif;
-  background-color: #111827;
-  color: #d1d5db;
+  background-color: #f8fafc;
+  color: #1e293b;
 }
 
 .tool-card {
   transition:
     transform 0.2s ease-in-out,
     box-shadow 0.2s ease-in-out;
-  border: 1px solid #374151;
-  background-color: #1f2937;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
   padding: 1.5rem;
   border-radius: 0.5rem;
   display: flex;
@@ -71,8 +250,8 @@ body {
 .tool-card:hover {
   transform: translateY(-5px);
   box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.2),
-    0 4px 6px -2px rgba(0, 0, 0, 0.1);
+    0 10px 15px -3px rgba(99, 102, 241, 0.15),
+    0 4px 6px -2px rgba(99, 102, 241, 0.1);
   border-color: #4f46e5;
 }
 
@@ -89,7 +268,7 @@ body {
   cursor: pointer;
   font-size: 1.25rem;
   font-weight: 700;
-  color: #ffffff;
+  color: #1e293b;
   text-align: left;
 }
 
@@ -98,11 +277,11 @@ body {
 }
 
 .category-header:hover {
-  color: #818cf8;
+  color: #4f46e5;
 }
 
 .category-header:hover .category-chevron {
-  color: #818cf8;
+  color: #4f46e5;
 }
 
 .category-tools {
@@ -126,7 +305,7 @@ body {
   border-left: none;
   border-right: none;
   border-top: none;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid #e2e8f0;
   background-color: transparent;
   align-items: center;
   justify-content: flex-start;
@@ -160,8 +339,8 @@ body {
 .compact-mode .tool-card:hover {
   transform: none;
   box-shadow: none;
-  background-color: #1f2937;
-  border-color: #1f2937;
+  background-color: #f1f5f9;
+  border-color: #e2e8f0;
 }
 
 @media (min-width: 640px) {
@@ -197,7 +376,7 @@ input[type='file']::file-selector-button {
 }
 
 ::-webkit-scrollbar-track {
-  background: #1f2937;
+  background: #e2e8f0;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -207,7 +386,6 @@ input[type='file']::file-selector-button {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #4338ca;
-  /* indigo-700 */
 }
 
 /* Style for drag-and-drop placeholder */
@@ -251,9 +429,9 @@ input[type='file']::file-selector-button {
   min-width: 0;
   overflow: auto;
   height: 75vh;
-  border: 2px solid #374151;
+  border: 2px solid #e2e8f0;
   border-radius: 0.5rem;
-  background-color: #1f2937;
+  background-color: #f8fafc;
 }
 
 /* This rule ensures canvases in side-by-side panels display at their natural rendered size. */
@@ -285,13 +463,10 @@ footer a {
 }
 
 .pill {
-  background-color: #374151;
-  /* bg-gray-700 */
-  color: #d1d5db;
-  /* text-gray-300 */
+  background-color: #e2e8f0;
+  color: #475569;
   padding: 8px 16px;
   border-radius: 9999px;
-  /* rounded-full */
   font-size: 14px;
   font-weight: 500;
 }
@@ -319,20 +494,19 @@ footer a {
 }
 
 .feature-card {
-  background-color: #1f2937;
-  /* bg-gray-800 */
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
   padding: 24px;
   border-radius: 8px;
-  /* rounded-lg */
   text-align: center;
 }
 
 .nav-link {
-  @apply text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors;
+  @apply text-gray-600 hover:bg-gray-100 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors;
 }
 
 .mobile-nav-link {
-  @apply text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium transition-colors;
+  @apply text-gray-600 hover:bg-gray-100 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium transition-colors;
 }
 
 .marker-slanted {
@@ -403,13 +577,9 @@ footer a {
 
 .solid-spinner {
   width: 64px;
-  /* w-16 */
   height: 64px;
-  /* h-16 */
-  border: 5px solid #374151;
-  /* border-gray-700 */
+  border: 5px solid #e2e8f0;
   border-bottom-color: #4f46e5;
-  /* border-indigo-600 */
   border-radius: 50%;
   display: inline-block;
   box-sizing: border-box;
@@ -475,39 +645,30 @@ footer a {
 
 /* Testimonial Card Styles */
 .testimonial-card {
-  background-color: #1f2937;
-  /* bg-gray-800 */
+  background-color: #ffffff;
   padding: 24px;
   border-radius: 0.75rem;
-  /* rounded-xl */
-  border: 1px solid #374151;
-  /* border-gray-700 */
+  border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .pill {
-  background-color: #374151;
-  /* bg-gray-700 */
-  color: #d1d5db;
-  /* text-gray-300 */
+  background-color: #e2e8f0;
+  color: #475569;
   padding: 8px 16px;
   border-radius: 9999px;
-  /* rounded-full */
   font-size: 14px;
   font-weight: 500;
 }
 
 .pill {
-  background-color: #374151;
-  /* bg-gray-700 */
-  color: #d1d5db;
-  /* text-gray-300 */
-  /* Smaller padding and font size by default for mobile */
+  background-color: #e2e8f0;
+  color: #475569;
   padding: 6px 12px;
   font-size: 12px;
   border-radius: 9999px;
-  /* rounded-full */
   font-weight: 500;
 }
 
@@ -549,7 +710,7 @@ footer a {
   font-size: 1.5rem;
   line-height: 2rem;
   font-weight: 700;
-  color: white;
+  color: #1e293b;
   margin-top: 2rem;
   margin-bottom: 1rem;
 }
@@ -558,7 +719,7 @@ footer a {
   font-size: 1.25rem;
   line-height: 1.75rem;
   font-weight: 600;
-  color: rgb(129 140 248);
+  color: #4f46e5;
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
 }
@@ -566,7 +727,7 @@ footer a {
 .legal-content p {
   margin-bottom: 1rem;
   line-height: 1.625;
-  color: rgb(156 163 175);
+  color: #475569;
 }
 
 .legal-content ul {
@@ -574,16 +735,16 @@ footer a {
   list-style-position: inside;
   margin-bottom: 1rem;
   padding-left: 1rem;
-  color: rgb(156 163 175);
+  color: #475569;
 }
 
 .legal-content a {
-  color: rgb(129 140 248);
+  color: #4f46e5;
   text-decoration: underline;
 }
 
 .legal-content a:hover {
-  color: rgb(165 180 252);
+  color: #4338ca;
 }
 
 details > summary {
@@ -626,11 +787,11 @@ button:disabled,
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
     'Courier New', monospace;
   line-height: 1;
-  color: #e5e7eb;
-  background-color: #374151;
-  border: 1px solid #4b5563;
+  color: #374151;
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
   border-radius: 0.25rem;
-  box-shadow: 0 1px 0 0 #1f2937;
+  box-shadow: 0 1px 0 0 #cbd5e1;
 }
 
 .shortcut-input {
@@ -652,16 +813,16 @@ button:disabled,
 }
 
 #shortcuts-list::-webkit-scrollbar-track {
-  background: #1f2937;
+  background: #e2e8f0;
 }
 
 #shortcuts-list::-webkit-scrollbar-thumb {
-  background: #4b5563;
+  background: #94a3b8;
   border-radius: 3px;
 }
 
 #shortcuts-list::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
+  background: #64748b;
 }
 
 /* Scroll to Top Button Visibility */
@@ -677,8 +838,8 @@ button:disabled,
   z-index: -1;
   background-size: 60px 60px;
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    linear-gradient(to right, rgba(99, 102, 241, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(99, 102, 241, 0.06) 1px, transparent 1px);
   mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
   -webkit-mask-image: radial-gradient(
     ellipse at center,

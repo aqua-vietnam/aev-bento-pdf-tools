@@ -665,7 +665,7 @@
   },
   "digitalSignPdf": {
     "name": "PDF 디지털 서명",
-    "pageTitle": "PDF 디지털 서명 - 암호화 서명 추가 | BentoPDF",
+    "pageTitle": "PDF 디지털 서명 - 암호화 서명 추가 | AEV-PDF",
     "subtitle": "X.509 인증서를 사용하여 PDF에 암호화 디지털 서명을 추가합니다. PKCS#12(.pfx, .p12) 및 PEM 형식을 지원합니다. 개인키는 브라우저 밖으로 나가지 않습니다.",
     "certificateSection": "인증서",
     "uploadCert": "인증서 업로드 (.pfx, .p12)",
@@ -687,7 +687,7 @@
   },
   "validateSignaturePdf": {
     "name": "PDF 서명 검증",
-    "pageTitle": "PDF 서명 검증 - 디지털 서명 확인 | BentoPDF",
+    "pageTitle": "PDF 서명 검증 - 디지털 서명 확인 | AEV-PDF",
     "subtitle": "PDF의 디지털 서명을 검증합니다. 인증서 유효성 확인, 서명자 정보 조회, 문서 무결성 확인이 가능합니다. 모든 처리는 브라우저에서 이루어집니다."
   },
   "emailToPdf": {

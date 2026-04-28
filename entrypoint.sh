@@ -16,10 +16,10 @@ if [ "$PUID" -eq 0 ] || [ "$PGID" -eq 0 ]; then
     exit 1
 fi
 
-echo "Starting BentoPDF with PUID=$PUID PGID=$PGID"
+echo "Starting AEV-PDF with PUID=$PUID PGID=$PGID"
 
-addgroup -g "$PGID" bentopdf 2>/dev/null || true
-adduser -u "$PUID" -G bentopdf -D -H -s /sbin/nologin bentopdf 2>/dev/null || true
+addgroup -g "$PGID" AEV-PDF 2>/dev/null || true
+adduser -u "$PUID" -G AEV-PDF -D -H -s /sbin/nologin AEV-PDF 2>/dev/null || true
 
 rm -f /var/log/nginx/error.log /var/log/nginx/access.log
 touch /var/log/nginx/error.log /var/log/nginx/access.log

@@ -1,22 +1,22 @@
 # Self-Hosting Guide
 
-BentoPDF can be self-hosted on your own infrastructure. This guide covers various deployment options.
+AEV-PDF can be self-hosted on your own infrastructure. This guide covers various deployment options.
 
 ## Quick Start with Docker / Podman
 
-The fastest way to self-host BentoPDF:
+The fastest way to self-host AEV-PDF:
 
 > [!IMPORTANT]
 > Office file conversion requires `SharedArrayBuffer`, which means the app must be both cross-origin isolated and served from a secure context. The official image already sends the required COOP/COEP headers, but browsers still disable `SharedArrayBuffer` on plain HTTP local-network origins such as `http://192.168.x.x`.
 >
-> Use `http://localhost` only for same-device testing. If users access BentoPDF through a LAN IP or hostname, terminate it with HTTPS.
+> Use `http://localhost` only for same-device testing. If users access AEV-PDF through a LAN IP or hostname, terminate it with HTTPS.
 
 ```bash
 # Docker
-docker run -d -p 3000:8080 ghcr.io/alam00000/bentopdf:latest
+docker run -d -p 3000:8080 ghcr.io/alam00000/AEV-PDF:latest
 
 # Podman
-podman run -d -p 3000:8080 ghcr.io/alam00000/bentopdf:latest
+podman run -d -p 3000:8080 ghcr.io/alam00000/AEV-PDF:latest
 ```
 
 Or with Docker Compose / Podman Compose:
@@ -24,8 +24,8 @@ Or with Docker Compose / Podman Compose:
 ```yaml
 # docker-compose.yml
 services:
-  bentopdf:
-    image: ghcr.io/alam00000/bentopdf:latest
+  AEV-PDF:
+    image: ghcr.io/alam00000/AEV-PDF:latest
     ports:
       - '3000:8080'
     restart: unless-stopped
@@ -41,12 +41,12 @@ podman-compose up -d
 
 ## Podman Quadlet (Linux Systemd)
 
-Run BentoPDF as a systemd service. Create `~/.config/containers/systemd/bentopdf.container`:
+Run AEV-PDF as a systemd service. Create `~/.config/containers/systemd/AEV-PDF.container`:
 
 ```ini
 [Container]
-Image=ghcr.io/alam00000/bentopdf:latest
-ContainerName=bentopdf
+Image=ghcr.io/alam00000/AEV-PDF:latest
+ContainerName=AEV-PDF
 PublishPort=3000:8080
 AutoUpdate=registry
 
@@ -59,7 +59,7 @@ WantedBy=default.target
 
 ```bash
 systemctl --user daemon-reload
-systemctl --user enable --now bentopdf
+systemctl --user enable --now AEV-PDF
 ```
 
 See [Docker deployment guide](/self-hosting/docker) for full Quadlet documentation.
@@ -68,8 +68,8 @@ See [Docker deployment guide](/self-hosting/docker) for full Quadlet documentati
 
 ```bash
 # Clone and build
-git clone https://github.com/alam00000/bentopdf.git
-cd bentopdf
+git clone https://github.com/alam00000/AEV-PDF.git
+cd AEV-PDF
 npm install
 npm run build
 
@@ -95,10 +95,10 @@ Simple Mode is designed for internal organizational use where you want to hide a
 SIMPLE_MODE=true npm run build
 
 # Or use the pre-built Docker image
-docker run -p 3000:8080 bentopdfteam/bentopdf-simple:latest
+docker run -p 3000:8080 AEV-PDFteam/AEV-PDF-simple:latest
 ```
 
-See [SIMPLE_MODE.md](https://github.com/alam00000/bentopdf/blob/main/SIMPLE_MODE.md) for full details.
+See [SIMPLE_MODE.md](https://github.com/alam00000/AEV-PDF/blob/main/SIMPLE_MODE.md) for full details.
 
 ### Base URL
 
@@ -110,13 +110,13 @@ BASE_URL=/pdf-tools/ npm run build
 
 ### Custom Branding
 
-Replace the default BentoPDF logo, name, and footer text with your own at build time:
+Replace the default AEV-PDF logo, name, and footer text with your own at build time:
 
-| Variable           | Description                           | Default                                 |
-| ------------------ | ------------------------------------- | --------------------------------------- |
-| `VITE_BRAND_NAME`  | Brand name shown in header and footer | `BentoPDF`                              |
-| `VITE_BRAND_LOGO`  | Logo path relative to `public/`       | `images/favicon-no-bg.svg`              |
-| `VITE_FOOTER_TEXT` | Custom footer/copyright text          | `© 2026 BentoPDF. All rights reserved.` |
+| Variable           | Description                           | Default                                |
+| ------------------ | ------------------------------------- | -------------------------------------- |
+| `VITE_BRAND_NAME`  | Brand name shown in header and footer | `AEV-PDF`                              |
+| `VITE_BRAND_LOGO`  | Logo path relative to `public/`       | `images/favicon-no-bg.svg`             |
+| `VITE_FOOTER_TEXT` | Custom footer/copyright text          | `© 2026 AEV-PDF. All rights reserved.` |
 
 ```bash
 # Place your logo in public/, then build
@@ -161,7 +161,7 @@ DISABLE_TOOLS="edit-pdf,sign-pdf" npm run build
 ```bash
 docker run -d -p 3000:8080 \
   -v ./config.json:/usr/share/nginx/html/config.json:ro \
-  ghcr.io/alam00000/bentopdf:latest
+  ghcr.io/alam00000/AEV-PDF:latest
 ```
 
 Both methods can be combined — the lists are merged.
@@ -185,7 +185,7 @@ Choose your platform:
 
 ## WASM Configuration (AGPL Components)
 
-BentoPDF **does not bundle** AGPL-licensed processing libraries in its source code, but **pre-configures CDN URLs** so all features work out of the box — no manual setup needed.
+AEV-PDF **does not bundle** AGPL-licensed processing libraries in its source code, but **pre-configures CDN URLs** so all features work out of the box — no manual setup needed.
 
 ::: tip Zero-Config by Default
 As of v2.0.0, WASM modules are pre-configured to load from jsDelivr CDN via environment variables. All advanced features work immediately without any user configuration.
@@ -202,8 +202,8 @@ As of v2.0.0, WASM modules are pre-configured to load from jsDelivr CDN via envi
 These are set in `.env.production` and baked into the build:
 
 ```bash
-VITE_WASM_PYMUPDF_URL=https://cdn.jsdelivr.net/npm/@bentopdf/pymupdf-wasm@0.11.16/
-VITE_WASM_GS_URL=https://cdn.jsdelivr.net/npm/@bentopdf/gs-wasm@0.1.1/assets/
+VITE_WASM_PYMUPDF_URL=https://cdn.jsdelivr.net/npm/@AEV-PDF/pymupdf-wasm@0.11.16/
+VITE_WASM_GS_URL=https://cdn.jsdelivr.net/npm/@AEV-PDF/gs-wasm@0.1.1/assets/
 VITE_WASM_CPDF_URL=https://cdn.jsdelivr.net/npm/coherentpdf@2.5.5/dist/
 VITE_TESSERACT_WORKER_URL=
 VITE_TESSERACT_CORE_URL=
@@ -227,7 +227,7 @@ docker build \
   --build-arg VITE_TESSERACT_LANG_URL=https://your-server.com/ocr/lang-data \
   --build-arg VITE_TESSERACT_AVAILABLE_LANGUAGES=eng,deu \
   --build-arg VITE_OCR_FONT_BASE_URL=https://your-server.com/ocr/fonts \
-  -t bentopdf .
+  -t AEV-PDF .
 
 # Or via .env.production before building from source
 VITE_WASM_PYMUPDF_URL=https://your-server.com/pymupdf/ npm run build
@@ -248,8 +248,8 @@ For networks with no internet access (government, healthcare, financial, etc.). 
 The included `prepare-airgap.sh` script automates the entire process — downloading WASM packages, building the Docker image, and producing a self-contained bundle with a setup script.
 
 ```bash
-git clone https://github.com/alam00000/bentopdf.git
-cd bentopdf
+git clone https://github.com/alam00000/AEV-PDF.git
+cd AEV-PDF
 
 # Show supported OCR language codes (for --ocr-languages)
 bash scripts/prepare-airgap.sh --list-ocr-languages
@@ -267,8 +267,8 @@ bash scripts/prepare-airgap.sh --wasm-base-url https://internal.example.com/wasm
 This produces a bundle directory:
 
 ```
-bentopdf-airgap-bundle/
-  bentopdf.tar              # Docker image
+AEV-PDF-airgap-bundle/
+  AEV-PDF.tar              # Docker image
   *.tgz                     # WASM packages (PyMuPDF, Ghostscript, CoherentPDF, Tesseract)
   tesseract-langdata/       # OCR traineddata files
   ocr-fonts/                # OCR text-layer font files
@@ -279,7 +279,7 @@ bentopdf-airgap-bundle/
 Transfer the bundle into the air-gapped network via USB, internal artifact repo, or approved method. Then run the included setup script:
 
 ```bash
-cd bentopdf-airgap-bundle
+cd AEV-PDF-airgap-bundle
 bash setup.sh
 ```
 
@@ -290,8 +290,8 @@ The setup script loads the Docker image, extracts WASM files, and optionally sta
 | Flag                           | Description                                      | Default                           |
 | ------------------------------ | ------------------------------------------------ | --------------------------------- |
 | `--wasm-base-url <url>`        | Where WASMs will be hosted internally            | _(required, prompted if missing)_ |
-| `--image-name <name>`          | Docker image tag                                 | `bentopdf`                        |
-| `--output-dir <path>`          | Output bundle directory                          | `./bentopdf-airgap-bundle`        |
+| `--image-name <name>`          | Docker image tag                                 | `AEV-PDF`                         |
+| `--output-dir <path>`          | Output bundle directory                          | `./AEV-PDF-airgap-bundle`         |
 | `--simple-mode`                | Enable Simple Mode                               | off                               |
 | `--base-url <path>`            | Subdirectory base URL (e.g. `/pdf/`)             | `/`                               |
 | `--language <code>`            | Default UI language (e.g. `fr`, `de`)            | _(none)_                          |
@@ -308,7 +308,7 @@ The setup script loads the Docker image, extracts WASM files, and optionally sta
 The interactive prompt also accepts `list` to print the full supported Tesseract code list and `search <term>` to find matches such as `search german` or `search chi`.
 
 ::: warning Same-Origin Requirement
-WASM files must be served from the **same origin** as the BentoPDF app. Web Workers use `importScripts()` which cannot load scripts cross-origin. For example, if BentoPDF runs at `https://internal.example.com`, the WASM base URL should also be `https://internal.example.com/wasm`.
+WASM files must be served from the **same origin** as the AEV-PDF app. Web Workers use `importScripts()` which cannot load scripts cross-origin. For example, if AEV-PDF runs at `https://internal.example.com`, the WASM base URL should also be `https://internal.example.com/wasm`.
 :::
 
 #### Manual Steps
@@ -319,8 +319,8 @@ WASM files must be served from the **same origin** as the BentoPDF app. Web Work
 **Step 1: Download the WASM and OCR packages** (on a machine with internet)
 
 ```bash
-npm pack @bentopdf/pymupdf-wasm@0.11.14
-npm pack @bentopdf/gs-wasm
+npm pack @AEV-PDF/pymupdf-wasm@0.11.14
+npm pack @AEV-PDF/gs-wasm
 npm pack coherentpdf
 npm pack tesseract.js@7.0.0
 npm pack tesseract.js-core@7.0.0
@@ -333,8 +333,8 @@ curl -fsSL https://raw.githack.com/googlefonts/noto-fonts/main/hinted/ttf/NotoSa
 **Step 2: Build the Docker image with internal URLs**
 
 ```bash
-git clone https://github.com/alam00000/bentopdf.git
-cd bentopdf
+git clone https://github.com/alam00000/AEV-PDF.git
+cd AEV-PDF
 
 docker build \
   --build-arg VITE_WASM_PYMUPDF_URL=https://internal-server.example.com/wasm/pymupdf/ \
@@ -344,20 +344,20 @@ docker build \
   --build-arg VITE_TESSERACT_CORE_URL=https://internal-server.example.com/wasm/ocr/core \
   --build-arg VITE_TESSERACT_LANG_URL=https://internal-server.example.com/wasm/ocr/lang-data \
   --build-arg VITE_OCR_FONT_BASE_URL=https://internal-server.example.com/wasm/ocr/fonts \
-  -t bentopdf .
+  -t AEV-PDF .
 ```
 
 **Step 3: Export the Docker image**
 
 ```bash
-docker save bentopdf -o bentopdf.tar
+docker save AEV-PDF -o AEV-PDF.tar
 ```
 
 **Step 4: Transfer into the air-gapped network**
 
 Copy via USB, internal artifact repo, or approved transfer method:
 
-- `bentopdf.tar` — the Docker image
+- `AEV-PDF.tar` — the Docker image
 - The five `.tgz` WASM/OCR packages from Step 1
 - The `tesseract-langdata/` directory from Step 1
 - The `ocr-fonts/` directory from Step 1
@@ -366,12 +366,12 @@ Copy via USB, internal artifact repo, or approved transfer method:
 
 ```bash
 # Load the Docker image
-docker load -i bentopdf.tar
+docker load -i AEV-PDF.tar
 
 # Extract WASM packages
 mkdir -p ./wasm/pymupdf ./wasm/gs ./wasm/cpdf ./wasm/ocr/core ./wasm/ocr/lang-data ./wasm/ocr/fonts
-tar xzf bentopdf-pymupdf-wasm-0.11.14.tgz -C ./wasm/pymupdf --strip-components=1
-tar xzf bentopdf-gs-wasm-*.tgz -C ./wasm/gs --strip-components=1
+tar xzf AEV-PDF-pymupdf-wasm-0.11.14.tgz -C ./wasm/pymupdf --strip-components=1
+tar xzf AEV-PDF-gs-wasm-*.tgz -C ./wasm/gs --strip-components=1
 tar xzf coherentpdf-*.tgz -C ./wasm/cpdf --strip-components=1
 TEMP_TESS=$(mktemp -d)
 tar xzf tesseract.js-7.0.0.tgz -C "$TEMP_TESS"
@@ -381,8 +381,8 @@ tar xzf tesseract.js-core-7.0.0.tgz -C ./wasm/ocr/core --strip-components=1
 cp ./tesseract-langdata/*.traineddata.gz ./wasm/ocr/lang-data/
 cp ./ocr-fonts/* ./wasm/ocr/fonts/
 
-# Run BentoPDF
-docker run -d -p 3000:8080 --restart unless-stopped bentopdf
+# Run AEV-PDF
+docker run -d -p 3000:8080 --restart unless-stopped AEV-PDF
 ```
 
 Make sure the files are accessible at the URLs you configured in Step 2, including `.../ocr/worker.min.js`, `.../ocr/core`, `.../ocr/lang-data`, and `.../ocr/fonts`.
@@ -406,13 +406,13 @@ VITE_OCR_FONT_BASE_URL=https://internal-server.example.com/wasm/ocr/fonts
 
 ### Hosting Your Own WASM Proxy
 
-If you need to serve AGPL WASM files with proper CORS headers, you can deploy a simple proxy. See the [Cloudflare WASM Proxy guide](https://github.com/alam00000/bentopdf/blob/main/cloudflare/WASM-PROXY.md) for an example implementation.
+If you need to serve AGPL WASM files with proper CORS headers, you can deploy a simple proxy. See the [Cloudflare WASM Proxy guide](https://github.com/alam00000/AEV-PDF/blob/main/cloudflare/WASM-PROXY.md) for an example implementation.
 
 ::: tip Why Separate?
 This separation ensures:
 
 - Clear legal compliance for commercial users
-- BentoPDF's core remains under its dual-license (AGPL-3.0 / Commercial)
+- AEV-PDF's core remains under its dual-license (AGPL-3.0 / Commercial)
 - WASM files are loaded at runtime, not bundled in the source
   :::
 
@@ -425,5 +425,5 @@ This separation ensures:
 | CPU         | Any modern processor                |
 
 ::: tip
-BentoPDF is a static site—there's no database or backend server required!
+AEV-PDF is a static site—there's no database or backend server required!
 :::

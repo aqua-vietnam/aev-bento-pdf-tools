@@ -679,7 +679,7 @@
   },
   "digitalSignPdf": {
     "name": "Assinatura Digital PDF",
-    "pageTitle": "Assinatura Digital PDF - Adicionar Assinatura Criptográfica | BentoPDF",
+    "pageTitle": "Assinatura Digital PDF - Adicionar Assinatura Criptográfica | AEV-PDF",
     "subtitle": "Adicione uma assinatura digital criptográfica ao seu PDF usando certificados X.509. Suporta formatos PKCS#12 (.pfx, .p12) e PEM. Sua chave privada nunca sai do seu navegador.",
     "certificateSection": "Certificado",
     "uploadCert": "Carregar certificado (.pfx, .p12)",
@@ -701,12 +701,12 @@
   },
   "validateSignaturePdf": {
     "name": "Validar Assinatura PDF",
-    "pageTitle": "Validar Assinatura PDF - Verificar Assinaturas Digitais | BentoPDF",
+    "pageTitle": "Validar Assinatura PDF - Verificar Assinaturas Digitais | AEV-PDF",
     "subtitle": "Verifique assinaturas digitais em seus arquivos PDF. Verifique a validade do certificado e a integridade do documento."
   },
   "timestampPdf": {
     "name": "Carimbo de tempo PDF",
-    "pageTitle": "Carimbo de tempo PDF grátis online - RFC 3161 | BentoPDF",
+    "pageTitle": "Carimbo de tempo PDF grátis online - RFC 3161 | AEV-PDF",
     "subtitle": "Adicione um carimbo de tempo RFC 3161 ao seu PDF usando um servidor TSA confiável. Prova que o seu documento existia num momento específico. Sem necessidade de certificado.",
     "tsaSectionTitle": "Servidor de carimbo de tempo (TSA)",
     "selectTsa": "Selecionar um servidor TSA",

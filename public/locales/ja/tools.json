@@ -723,7 +723,7 @@
   },
   "digitalSignPdf": {
     "name": "PDFへの電子署名",
-    "pageTitle": "デジタル署名PDF - 暗号化署名の追加 | BentoPDF",
+    "pageTitle": "デジタル署名PDF - 暗号化署名の追加 | AEV-PDF",
     "subtitle": "X.509証明書を使用してPDFに暗号デジタル署名を追加します。 PKCS#12(.pfx, .p12)およびPEM形式をサポートします。秘密キーがブラウザから離れることはありません。",
     "certificateSection": "証明書",
     "uploadCert": "証明書のアップロード (.pfx, .p12)",
@@ -745,12 +745,12 @@
   },
   "validateSignaturePdf": {
     "name": "PDF署名を検証する",
-    "pageTitle": "PDF 署名を検証する - デジタル署名を検証する | BentoPDF",
+    "pageTitle": "PDF 署名を検証する - デジタル署名を検証する | AEV-PDF",
     "subtitle": "PDFファイルのデジタル署名を検証します。証明書の有効性を確認、署名者の詳細を表示し、文書の整合性を確認します。すべての処理はブラウザ内で行われます。"
   },
   "timestampPdf": {
     "name": "タイムスタンプPDF",
-    "pageTitle": "タイムスタンプPDFオンライン無料 - RFC 3161ドキュメント タイムスタンプ | BentoPDF",
+    "pageTitle": "タイムスタンプPDFオンライン無料 - RFC 3161ドキュメント タイムスタンプ | AEV-PDF",
     "subtitle": "信頼できる Time Stamp Authority(TSA) サーバーを使用して、RFC 3161ドキュメントのタイムスタンプをPDFに追加します。文書が特定の時点で存在していたことを証明します。証明書は必要ありません。",
     "tsaSectionTitle": "タイムスタンプサーバー(TSA)",
     "selectTsa": "TSAサーバーを選択してください",

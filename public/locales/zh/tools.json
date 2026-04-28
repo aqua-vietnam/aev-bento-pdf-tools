@@ -665,7 +665,7 @@
   },
   "digitalSignPdf": {
     "name": "PDF 数字签名",
-    "pageTitle": "PDF 数字签名 - 添加加密签名 | BentoPDF",
+    "pageTitle": "PDF 数字签名 - 添加加密签名 | AEV-PDF",
     "subtitle": "使用 X.509 证书为您的 PDF 添加加密数字签名。支持 PKCS#12 (.pfx, .p12) 和 PEM 格式。您的私钥永远不会离开您的浏览器。",
     "certificateSection": "证书",
     "uploadCert": "上传证书 (.pfx, .p12)",
@@ -687,12 +687,12 @@
   },
   "validateSignaturePdf": {
     "name": "验证 PDF 签名",
-    "pageTitle": "验证 PDF 签名 - 验证数字签名 | BentoPDF",
+    "pageTitle": "验证 PDF 签名 - 验证数字签名 | AEV-PDF",
     "subtitle": "验证您的 PDF 文件中的数字签名。检查证书有效性、查看签名者详情并确认文档完整性。所有处理都在您的浏览器中进行。"
   },
   "timestampPdf": {
     "name": "PDF 时间戳",
-    "pageTitle": "免费在线 PDF 时间戳 - RFC 3161 文档时间戳 | BentoPDF",
+    "pageTitle": "免费在线 PDF 时间戳 - RFC 3161 文档时间戳 | AEV-PDF",
     "subtitle": "通过可信的 TSA 服务器为您的 PDF 添加 RFC 3161 时间戳。证明您的文档在特定时间点存在。无需证书。",
     "tsaSectionTitle": "时间戳服务器 (TSA)",
     "selectTsa": "选择 TSA 服务器",
