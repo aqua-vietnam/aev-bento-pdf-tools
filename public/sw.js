@@ -1,11 +1,11 @@
 /**
- * AEV-PDF Service Worker
+ * AEV PDF Service Worker
  * Caches WASM files and static assets for offline support and faster loading
  * Supports both local and CDN delivery with deduplication
  * Version: 1.1.0
  */
 
-const CACHE_VERSION = 'AEV-PDF-v11';
+const CACHE_VERSION = 'AEV PDF-v11';
 const CACHE_NAME = `${CACHE_VERSION}-static`;
 
 const trustedCdnOrigins = new Set(['https://cdn.jsdelivr.net']);
@@ -51,7 +51,7 @@ self.addEventListener('activate', (event) => {
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            if (cacheName.startsWith('AEV-PDF-') && cacheName !== CACHE_NAME) {
+            if (cacheName.startsWith('AEV PDF-') && cacheName !== CACHE_NAME) {
               // console.log('[ServiceWorker] Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
@@ -286,8 +286,8 @@ const CACHEABLE_EXTENSIONS =
 function shouldCache(pathname, isCDN = false) {
   if (isCDN) {
     return (
-      pathname.includes('/@AEV-PDF/pymupdf-wasm') ||
-      pathname.includes('/@AEV-PDF/gs-wasm') ||
+      pathname.includes('/@bentopdf/pymupdf-wasm') ||
+      pathname.includes('/@bentopdf/gs-wasm') ||
       pathname.includes('/@matbee/libreoffice-converter') ||
       CACHEABLE_EXTENSIONS.test(pathname)
     );

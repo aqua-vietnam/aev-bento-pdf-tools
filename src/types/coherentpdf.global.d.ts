@@ -1,11 +1,11 @@
 /*
- * coherentpdf.global.d.ts — TypeScript type definitions for AEV-PDF / CoherentPDF integration
+ * coherentpdf.global.d.ts — TypeScript type definitions for AEV PDF / CoherentPDF integration
  *
- * These type definitions were written by Alam for use in the AEV-PDF project.
+ * These type definitions were written by Alam for use in the AEV PDF project.
  * They describe APIs provided by the CoherentPDF library (cpdf.js) but are original
  * work created for type safety and integration.
  *
- * Copyright © 2026 AEV-PDF
+ * Copyright © 2026 AEV PDF
  * Licensed under the GNU Affero General Public License v3.0 or later (AGPLv3+).
  */
 declare global {

@@ -338,5 +338,5 @@ export async function exportComparePdf(
   const blob = new Blob([pdfBytes.buffer as ArrayBuffer], {
     type: 'application/pdf',
   });
-  downloadFile(blob, 'AEV-PDF-compare-export.pdf');
+  downloadFile(blob, 'AEV PDF-compare-export.pdf');
 }

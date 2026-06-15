@@ -143,7 +143,10 @@ describe('timestampPdf', () => {
     vi.stubEnv('VITE_CORS_PROXY_URL', '');
     Object.defineProperty(window, 'location', {
       configurable: true,
-      value: { protocol: 'https:', origin: 'https://www.bentopdf.com' },
+      value: {
+        protocol: 'https:',
+        origin: 'https://pdf-tools.aquavietnam.com.vn',
+      },
     });
     vi.resetModules();
     const { timestampPdf: freshTimestamp } =

@@ -1,6 +1,6 @@
-# AEV-PDF Corporate Contributor License Agreement (CCLA)
+# BentoPDF Corporate Contributor License Agreement (CCLA)
 
-Thank you for your organization's interest in contributing to AEV-PDF. This Corporate Contributor License Agreement ("Agreement") documents the rights granted by corporate contributors to the Project.
+Thank you for your organization's interest in contributing to BentoPDF. This Corporate Contributor License Agreement ("Agreement") documents the rights granted by corporate contributors to the Project.
 
 By signing this Agreement, you accept and agree to the following terms and conditions for your organization's present and future Contributions submitted to the Project.
 
@@ -12,7 +12,7 @@ By signing this Agreement, you accept and agree to the following terms and condi
 
 **"Contribution"** means any original work of authorship, including any modifications or additions to an existing work, that is intentionally submitted by You or any of Your Contributors to the Project for inclusion in, or documentation of, the Project. For the purposes of this definition, "submitted" means any form of electronic, verbal, or written communication sent to the Project or its representatives, including but not limited to communication on electronic mailing lists, source code control systems, and issue tracking systems that are managed by, or on behalf of, the Project for the purpose of discussing and improving the Project.
 
-**"Project"** means the AEV-PDF software project and all associated repositories, documentation, and related materials maintained at https://github.com/alam00000/AEV-PDF.
+**"Project"** means the BentoPDF software project and all associated repositories, documentation, and related materials maintained at https://github.com/alam00000/bentopdf.
 
 **"Project Owner"** means the owners and maintainers of the Project.
 
@@ -133,8 +133,8 @@ The following individuals are authorized to submit Contributions to the Project 
 |           |                 |               |            |
 |           |                 |               |            |
 
-_Add additional rows as needed. To update this list, contact the Project Owner at contact@AEV-PDF.com_
+_Add additional rows as needed. To update this list, contact the Project Owner at contact@bentopdf.com_
 
 ---
 
-_This CLA is based on the Apache Corporate Contributor License Agreement and has been adapted for AEV-PDF's dual licensing model._
+_This CLA is based on the Apache Corporate Contributor License Agreement and has been adapted for BentoPDF's dual licensing model._

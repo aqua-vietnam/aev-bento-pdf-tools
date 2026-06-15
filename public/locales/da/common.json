@@ -12,7 +12,7 @@
     "noLanguagesFound": "Ingen sprog fundet"
   },
   "donation": {
-    "message": "Elsker du AEV-PDF? Hjælp os med at holde det gratis og open source!",
+    "message": "Elsker du AEV PDF? Hjælp os med at holde det gratis og open source!",
     "button": "Donér"
   },
   "hero": {
@@ -29,7 +29,7 @@
   },
   "features": {
     "title": "Hvorfor vælge",
-    "AEV-PDF": "AEV-PDF?",
+    "AEV PDF": "AEV PDF?",
     "noSignup": {
       "title": "Ingen tilmelding",
       "description": "Start med det samme, ingen konti eller e-mails."
@@ -187,7 +187,7 @@
     "questions": "Spørgsmål",
     "sectionTitle": "Ofte stillede spørgsmål",
     "isFree": {
-      "question": "Er AEV-PDF virkelig gratis?",
+      "question": "Er AEV PDF virkelig gratis?",
       "answer": "Ja, absolut. Alle værktøjer er 100% gratis at bruge, uden filgrænser, uden tilmeldinger og uden vandmærker."
     },
     "areFilesSecure": {
@@ -196,10 +196,10 @@
     },
     "platforms": {
       "question": "Virker det på Mac, Windows og mobil?",
-      "answer": "Ja! AEV-PDF virker på alle moderne browsere, uanset styresystem."
+      "answer": "Ja! AEV PDF virker på alle moderne browsere, uanset styresystem."
     },
     "gdprCompliant": {
-      "question": "Er AEV-PDF GDPR-kompatibel?",
+      "question": "Er AEV PDF GDPR-kompatibel?",
       "answer": "Ja. Da vi ikke indsamler eller behandler dine filer på vores servere, er dine data altid under din kontrol."
     },
     "dataStorage": {
@@ -207,8 +207,8 @@
       "answer": "Nej. Vi gemmer eller sporer aldrig dine filer. Alt foregår i din browser."
     },
     "different": {
-      "question": "Hvad gør AEV-PDF anderledes?",
-      "answer": "De fleste PDF-værktøjer uploader dine filer til en server. AEV-PDF gør det hele lokalt i din browser."
+      "question": "Hvad gør AEV PDF anderledes?",
+      "answer": "De fleste PDF-værktøjer uploader dine filer til en server. AEV PDF gør det hele lokalt i din browser."
     },
     "browserBased": {
       "question": "Hvordan gør browserbaseret behandling mig sikker?",
@@ -226,11 +226,11 @@
   },
   "support": {
     "title": "Kan du lide mit arbejde?",
-    "description": "AEV-PDF er et passioneret projekt, bygget for at tilbyde et gratis og privat PDF-værktøj til alle.",
+    "description": "AEV PDF er et passioneret projekt, bygget for at tilbyde et gratis og privat PDF-værktøj til alle.",
     "buyMeCoffee": "Køb en kaffe til mig"
   },
   "footer": {
-    "copyright": "© 2026 AEV-PDF. Alle rettigheder forbeholdes.",
+    "copyright": "© 2026 AEV PDF. Alle rettigheder forbeholdes.",
     "version": "Version",
     "company": "Virksomhed",
     "aboutUs": "Om os",
@@ -294,7 +294,7 @@
       "title": "Privatliv først. Altid.",
       "description": "Alt sker lokalt i din browser. Dine dokumenter er 100% private."
     },
-    "whyAEV-PDF": {
+    "whyAEV PDF": {
       "title": "Hvorfor",
       "speed": {
         "title": "Bygget til hastighed",

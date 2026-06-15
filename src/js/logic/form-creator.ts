@@ -2212,7 +2212,7 @@ downloadBtn.addEventListener('click', async () => {
 
     // Set document metadata for accessibility
     pdfDoc.setTitle('Fillable Form');
-    pdfDoc.setAuthor('AEV-PDF');
+    pdfDoc.setAuthor('AEV PDF');
     pdfDoc.setLanguage('en-US');
 
     const radioGroups = new Map<

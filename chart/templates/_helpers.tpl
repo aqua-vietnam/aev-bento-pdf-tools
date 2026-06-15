@@ -1,23 +1,23 @@
 {{/*
-Expand the name of the AEV-PDF
+Expand the name of the bentopdf
 */}}
-{{- define "AEV-PDF.name" -}}
+{{- define "bentopdf.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "AEV-PDF.chart" -}}
+{{- define "bentopdf.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "AEV-PDF.labels" -}}
-helm.sh/chart: {{ include "AEV-PDF.chart" . }}
-{{ include "AEV-PDF.selectorLabels" . }}
+{{- define "bentopdf.labels" -}}
+helm.sh/chart: {{ include "bentopdf.chart" . }}
+{{ include "bentopdf.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -27,7 +27,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "AEV-PDF.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "AEV-PDF.name" . }}
+{{- define "bentopdf.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "bentopdf.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}

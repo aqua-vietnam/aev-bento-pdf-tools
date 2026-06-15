@@ -1,12 +1,12 @@
-# AEV-PDF Robots.txt
-# https://www.AEV-PDF.com
+# AEV PDF Robots.txt
+# https://pdf-tools.aquavietnam.com.vn
 
 # Allow all crawlers
 User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://www.AEV-PDF.com/sitemap.xml
+Sitemap: https://pdf-tools.aquavietnam.com.vn/sitemap.xml
 
 # Disallow internal/system paths
 Disallow: /api/

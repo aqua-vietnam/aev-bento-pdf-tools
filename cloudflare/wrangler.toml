@@ -1,4 +1,4 @@
-name = "AEV-PDF-cors-proxy"
+name = "bentopdf-cors-proxy"
 main = "cors-proxy-worker.js"
 compatibility_date = "2024-01-01"
 
@@ -37,9 +37,9 @@ id = "b88e030b308941118cd484e3fcb3ae49"
 
 # Optional: Custom domain routing
 # routes = [
-#   { pattern = "cors-proxy.AEV-PDF.com/*", zone_name = "AEV-PDF.com" }
+#   { pattern = "cors-proxy.bentopdf.com/*", zone_name = "bentopdf.com" }
 # ]
 
 # Optional: Environment variables (for non-secret config)
 # [vars]
-# ALLOWED_ORIGINS = "https://www.AEV-PDF.com,https://AEV-PDF.com"
+# ALLOWED_ORIGINS = "https://www.bentopdf.com,https://bentopdf.com"

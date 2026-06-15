@@ -10,24 +10,24 @@ Kubernetes may be overkill for a static site, but it can be a great fit if you a
 > - `Cross-Origin-Opener-Policy: same-origin`
 > - `Cross-Origin-Embedder-Policy: require-corp`
 >
-> The official AEV-PDF nginx images include these headers. In Kubernetes, **Ingress/Gateway controllers are also reverse proxies**, so ensure these headers are preserved (or add them at the edge).
+> The official BentoPDF nginx images include these headers. In Kubernetes, **Ingress/Gateway controllers are also reverse proxies**, so ensure these headers are preserved (or add them at the edge).
 
 ## Prereqs
 
 - Kubernetes cluster
 - Helm v3
-- A AEV-PDF nginx image (e.g. `ghcr.io/alam00000/AEV-PDF:<tag>`) that serves on **port 8080**
+- A BentoPDF nginx image (e.g. `ghcr.io/alam00000/bentopdf:<tag>`) that serves on **port 8080**
 
 ## Deploy with Helm
 
 ### Install from this repo (local chart)
 
 ```bash
-kubectl create namespace AEV-PDF
+kubectl create namespace bentopdf
 
-helm upgrade --install AEV-PDF /path/to/AEV-PDF/chart \
-  --namespace AEV-PDF \
-  --set image.repository=ghcr.io/alam00000/AEV-PDF \
+helm upgrade --install bentopdf /path/to/bentopdf/chart \
+  --namespace bentopdf \
+  --set image.repository=ghcr.io/alam00000/bentopdf \
   --set image.tag=latest
 ```
 
@@ -38,11 +38,11 @@ If the chart is published to GHCR as an OCI artifact:
 ```bash
 export GHCR_USERNAME="<github-org-or-user>"
 
-helm upgrade --install AEV-PDF oci://ghcr.io/$GHCR_USERNAME/charts/AEV-PDF \
-  --namespace AEV-PDF \
+helm upgrade --install bentopdf oci://ghcr.io/$GHCR_USERNAME/charts/bentopdf \
+  --namespace bentopdf \
   --create-namespace \
   --version 0.1.0 \
-  --set image.repository=ghcr.io/alam00000/AEV-PDF \
+  --set image.repository=ghcr.io/alam00000/bentopdf \
   --set image.tag=latest
 ```
 
@@ -51,7 +51,7 @@ helm upgrade --install AEV-PDF oci://ghcr.io/$GHCR_USERNAME/charts/AEV-PDF \
 ### Port-forward (quick test)
 
 ```bash
-kubectl -n AEV-PDF port-forward deploy/AEV-PDF 8080:8080
+kubectl -n bentopdf port-forward deploy/bentopdf 8080:8080
 ```
 
 ### Ingress (optional)
@@ -79,14 +79,14 @@ Example (Cloudflare Gateway API operator):
 gateway:
   enabled: true
   name: bento-tunnel
-  namespace: AEV-PDF
+  namespace: bentopdf
   gatewayClassName: cloudflare
 
 httpRoute:
   enabled: true
   parentRefs:
     - name: bento-tunnel
-      namespace: AEV-PDF
+      namespace: bentopdf
       sectionName: http
   hostnames:
     - pdfs.example.com
@@ -96,7 +96,7 @@ httpRoute:
 
 ### What "should" happen
 
-AEV-PDF’s nginx config sets the required response headers. Most Ingress/Gateway controllers **pass upstream response headers through unchanged**.
+BentoPDF’s nginx config sets the required response headers. Most Ingress/Gateway controllers **pass upstream response headers through unchanged**.
 
 ### What can break it
 
@@ -182,8 +182,8 @@ Use a ConfigMap to disable tools at runtime without rebuilding the image:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: AEV-PDF-config
-  namespace: AEV-PDF
+  name: bentopdf-config
+  namespace: bentopdf
 data:
   config.json: |
     {
@@ -196,7 +196,7 @@ Mount it into the served directory:
 ```yaml
 spec:
   containers:
-    - name: AEV-PDF
+    - name: bentopdf
       volumeMounts:
         - name: config
           mountPath: /usr/share/nginx/html/config.json
@@ -205,7 +205,7 @@ spec:
   volumes:
     - name: config
       configMap:
-        name: AEV-PDF-config
+        name: bentopdf-config
 ```
 
 Tool IDs are the page URL without `.html` — open any tool and look at the URL (e.g., `edit-pdf`, `merge-pdf`, `compress-pdf`). Disabled tools are hidden from the homepage, search, shortcuts, workflow builder, and direct URL access. See the [Docker guide](/self-hosting/docker#disabling-specific-tools) for the full list of options.

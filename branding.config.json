@@ -1,0 +1,57 @@
+{
+  "$comment": "Single source of truth cho branding của fork AEV PDF. Sửa giá trị ở đây rồi chạy: node scripts/apply-branding.mjs",
+  "brand": {
+    "name": "AEV PDF",
+    "domain": "pdf-tools.aquavietnam.com.vn",
+    "twitterHandle": "@aquavietnam",
+    "twitterUrl": "x.com/aquavietnam",
+    "linkedinUrl": "linkedin.com/company/aquavietnam",
+    "logo": "aqua-logo.png",
+    "footerText": "© 2026 AEV PDF. All rights reserved."
+  },
+  "upstream": {
+    "$comment": "Token gốc của BentoPDF. Các token hạ tầng (npm scope, cloudflare worker) PHẢI giữ nguyên, không brand.",
+    "brandNames": ["BentoPDF", "Bento PDF"],
+    "domains": ["www.bentopdf.com", "bentopdf.com"],
+    "twitterHandle": "@BentoPDF",
+    "githubRepo": "alam00000/bentopdf",
+    "preserveTokens": [
+      "@bentopdf/",
+      "bentopdf.workers.dev",
+      "bentopdf-cors",
+      "bentopdf-pymupdf-wasm",
+      "bentopdf-gs-wasm",
+      "bentopdf-airgap-bundle",
+      "cdn.jsdelivr.net/npm/@bentopdf"
+    ]
+  },
+  "scope": [
+    "*.html",
+    "src/pages/**/*.html",
+    "src/partials/**/*.html",
+    "public/pdfjs-viewer/*.html",
+    "public/site.webmanifest",
+    "public/robots.txt",
+    "public/sw.js",
+    "public/locales/**/*.json",
+    "src/js/**/*.ts",
+    "src/tests/**/*.ts",
+    "src/types/**/*.ts",
+    ".well-known/funding-manifest-urls",
+    ".gitignore",
+    "eslint.config.mjs"
+  ],
+  "excludeFromScope": [
+    "docs/**",
+    "*.md",
+    ".github/**",
+    "Dockerfile*",
+    "docker-compose*.yml",
+    "chart/**",
+    "cloudflare/**",
+    "scripts/**",
+    "public/coherentpdf*",
+    "package-lock.json",
+    ".env*"
+  ]
+}

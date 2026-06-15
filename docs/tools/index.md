@@ -1,6 +1,6 @@
 # Tools Reference
 
-AEV-PDF offers **130+ tools** for working with PDFs. All tools run entirely in your browser — your files never leave your device.
+BentoPDF offers **130+ tools** for working with PDFs. All tools run entirely in your browser — your files never leave your device.
 
 ---
 

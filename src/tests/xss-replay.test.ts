@@ -162,15 +162,15 @@ describe('XSS replay — WASM provider localStorage poisoning', () => {
       ghostscript: 'https://attacker.test/wasm/gs/',
       cpdf: 'https://attacker.test/wasm/cpdf/',
     };
-    localStorage.setItem('AEV-PDF:wasm-providers', JSON.stringify(wasmPayload));
+    localStorage.setItem('AEV PDF:wasm-providers', JSON.stringify(wasmPayload));
 
-    const stored = localStorage.getItem('AEV-PDF:wasm-providers');
+    const stored = localStorage.getItem('AEV PDF:wasm-providers');
     expect(stored).toContain('attacker.test');
   });
 
   it('WasmProvider scrubs the untrusted URLs on load and falls back to env defaults', async () => {
     localStorage.setItem(
-      'AEV-PDF:wasm-providers',
+      'AEV PDF:wasm-providers',
       JSON.stringify({
         pymupdf: 'https://attacker.test/wasm/pymupdf/',
         ghostscript: 'https://attacker.test/wasm/gs/',
@@ -186,7 +186,7 @@ describe('XSS replay — WASM provider localStorage poisoning', () => {
     expect(got).toMatch(/cdn\.jsdelivr\.net|^https?:\/\/[^/]+\//);
 
     const remaining = JSON.parse(
-      localStorage.getItem('AEV-PDF:wasm-providers') || '{}'
+      localStorage.getItem('AEV PDF:wasm-providers') || '{}'
     );
     expect(remaining.pymupdf).toBeUndefined();
     expect(remaining.ghostscript).toBeUndefined();

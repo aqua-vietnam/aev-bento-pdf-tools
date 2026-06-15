@@ -1,11 +1,11 @@
 services:
-  AEV-PDF:
+  bentopdf:
     build:
       context: .
       dockerfile: Dockerfile
       args:
         SIMPLE_MODE: false # false for default mode, true for simple mode
-    container_name: AEV-PDF
+    container_name: bentopdf
     ports:
       - '8080:8080'
     restart: unless-stopped

@@ -2,7 +2,7 @@
 
 ## Non-Root User Support
 
-AEV-PDF now uses nginx-unprivileged for enhanced security. This follows the Principle of Least Privilege and is essential for production environments.
+BentoPDF now uses nginx-unprivileged for enhanced security. This follows the Principle of Least Privilege and is essential for production environments.
 
 ### Security Benefits
 
@@ -16,18 +16,18 @@ AEV-PDF now uses nginx-unprivileged for enhanced security. This follows the Prin
 #### Default Configuration (nginx-unprivileged)
 
 ```bash
-docker build -t AEV-PDF .
-docker run -p 8080:8080 AEV-PDF
+docker build -t bentopdf .
+docker run -p 8080:8080 bentopdf
 ```
 
 #### Simple Mode
 
 ```bash
 # Build with simple mode enabled
-docker build --build-arg SIMPLE_MODE=true -t AEV-PDF-simple .
+docker build --build-arg SIMPLE_MODE=true -t bentopdf-simple .
 
 # Run the container
-docker run -p 8080:8080 AEV-PDF-simple
+docker run -p 8080:8080 bentopdf-simple
 ```
 
 #### Kubernetes Example
@@ -36,7 +36,7 @@ docker run -p 8080:8080 AEV-PDF-simple
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: AEV-PDF
+  name: bentopdf
 spec:
   template:
     spec:
@@ -45,8 +45,8 @@ spec:
         runAsUser: 2000
         runAsGroup: 2000
       containers:
-        - name: AEV-PDF
-          image: AEV-PDF:latest
+        - name: bentopdf
+          image: bentopdf:latest
           ports:
             - containerPort: 8080
 ```
@@ -56,7 +56,7 @@ spec:
 ```yaml
 version: '3.8'
 services:
-  AEV-PDF:
+  bentopdf:
     build:
       context: .
       dockerfile: Dockerfile

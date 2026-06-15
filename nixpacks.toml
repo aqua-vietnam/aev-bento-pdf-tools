@@ -3,3 +3,5 @@ nixPkgs = ["nodejs_22"]
 
 [variables]
 NIXPACKS_NODE_VERSION = "22.14.0"
+# Domain dùng cho sitemap, canonical/hreflang (build-time). Khớp branding.config.json.
+SITE_URL = "https://pdf-tools.aquavietnam.com.vn"

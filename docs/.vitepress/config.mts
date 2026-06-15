@@ -3,8 +3,8 @@ import { defineConfig } from 'vitepress'
 const SITE_URL = 'https://www.bentopdf.com'
 
 export default defineConfig({
-    title: "AEV-PDF Docs",
-    description: "Documentation for AEV-PDF - The free, open-source, privacy-first PDF toolkit",
+    title: "BentoPDF Docs",
+    description: "Documentation for BentoPDF - The free, open-source, privacy-first PDF toolkit",
     base: '/docs/',
     cleanUrls: true,
 
@@ -217,13 +217,13 @@ export default defineConfig({
         },
 
         socialLinks: [
-            { icon: 'github', link: 'https://github.com/alam00000/AEV-PDF' },
+            { icon: 'github', link: 'https://github.com/alam00000/bentopdf' },
             { icon: 'discord', link: 'https://discord.gg/Bgq3Ay3f2w' }
         ],
 
         footer: {
             message: 'Dual-licensed under AGPL-3.0 and Commercial License.',
-            copyright: 'Copyright © 2026 AEV-PDF'
+            copyright: 'Copyright © 2026 BentoPDF'
         },
 
         search: {

@@ -75,7 +75,7 @@ export interface MarkdownEditorOptions {
 
 export type { MarkdownItOptions } from '@/types';
 
-const DEFAULT_MARKDOWN = `# Welcome to AEV-PDF Markdown Editor
+const DEFAULT_MARKDOWN = `# Welcome to AEV PDF Markdown Editor
 
 This is a **live preview** markdown editor with full plugin support.
 
@@ -85,7 +85,7 @@ This is a **live preview** markdown editor with full plugin support.
 
 - **Bold** and *italic* text
 - ~~Strikethrough~~ text
-- [Links](https://AEV-PDF.com)
+- [Links](https://pdf-tools.aquavietnam.com.vn)
 - ==Highlighted text== using mark
 - ++Inserted text++ using ins
 - H~2~O for subscript
@@ -145,12 +145,12 @@ graph TD
 \`\`\`mermaid
 sequenceDiagram
     participant User
-    participant AEV-PDF
+    participant AEV PDF
     participant Server
-    User->>AEV-PDF: Upload PDF
-    AEV-PDF->>AEV-PDF: Process locally
-    AEV-PDF-->>User: Download result
-    Note over AEV-PDF: No server needed!
+    User->>AEV PDF: Upload PDF
+    AEV PDF->>AEV PDF: Process locally
+    AEV PDF-->>User: Download result
+    Note over AEV PDF: No server needed!
 \`\`\`
 
 ### Pie Chart
@@ -218,7 +218,7 @@ erDiagram
 
 \`\`\`mermaid
 mindmap
-    root((AEV-PDF))
+    root((AEV PDF))
         Convert
             Word to PDF
             Excel to PDF

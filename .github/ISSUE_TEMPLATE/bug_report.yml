@@ -1,5 +1,5 @@
 name: 🐛 Bug Report
-description: Report a bug in AEV-PDF
+description: Report a bug in BentoPDF
 title: "(Bug) "
 labels: ["bug", "needs triage"]
 body:
@@ -92,9 +92,9 @@ body:
       required: true
 
   - type: input
-    id: AEV-PDF-version
+    id: bentopdf-version
     attributes:
-      label: AEV-PDF Version
+      label: BentoPDF Version
       description: Check the footer or package.json
       placeholder: "1.15.4"
     validations:
