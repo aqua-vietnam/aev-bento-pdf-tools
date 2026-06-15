@@ -1,16 +1,16 @@
 # Getting Started
 
-Welcome to AEV-PDF! This guide will help you get up and running quickly.
+Welcome to BentoPDF! This guide will help you get up and running quickly.
 
-## What is AEV-PDF?
+## What is BentoPDF?
 
-AEV-PDF is a free, open-source, privacy-first PDF toolkit that runs **entirely in your browser**. Your files never leave your device—all processing happens locally using WebAssembly (WASM) technology.
+BentoPDF is a free, open-source, privacy-first PDF toolkit that runs **entirely in your browser**. Your files never leave your device—all processing happens locally using WebAssembly (WASM) technology.
 
 ## Quick Start
 
 ### Option 1: Use the Hosted Version
 
-Visit [AEV-PDF.com](https://AEV-PDF.com) to use AEV-PDF instantly—no installation required.
+Visit [bentopdf.com](https://bentopdf.com) to use BentoPDF instantly—no installation required.
 
 ### Option 2: Self-Host with Docker
 
@@ -24,13 +24,16 @@ Visit [AEV-PDF.com](https://AEV-PDF.com) to use AEV-PDF instantly—no installat
 > `http://localhost` works for local testing because browsers treat loopback as trustworthy. `http://192.168.x.x` or other LAN IPs usually do not, so Word/Excel/PowerPoint conversions will require HTTPS when accessed from other devices on your network.
 
 ```bash
-# Pull and run the Docker image
-docker run -d -p 3000:8080 ghcr.io/alam00000/AEV-PDF:latest
+# Pull and run the Docker image (self-hosted build)
+docker run -d -p 3000:8080 ghcr.io/alam00000/bentopdf-simple:latest
 
 # Or use Docker Compose
-curl -O https://raw.githubusercontent.com/alam00000/AEV-PDF/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/alam00000/bentopdf/main/docker-compose.yml
 docker compose up -d
 ```
+
+> [!TIP]
+> BentoPDF ships in two builds: the **Self-Hosted build** (`bentopdf-simple`, used above) for internal/team/organization deployments, and the **Commercial build** (`bentopdf:latest`) used by bentopdf.com itself and by commercial license holders running public-facing deployments. Both ship the same PDF tools — the Commercial build adds the bentopdf.com hero, FAQ, testimonials, and footer. If in doubt, use the Self-Hosted build.
 
 Then open `http://localhost:3000` in your browser.
 
@@ -41,8 +44,8 @@ Then open `http://localhost:3000` in your browser.
 
 ```bash
 # Clone the repository
-git clone https://github.com/alam00000/AEV-PDF.git
-cd AEV-PDF
+git clone https://github.com/alam00000/bentopdf.git
+cd bentopdf
 
 # Install dependencies
 npm install
@@ -64,7 +67,7 @@ npm run dev
 
 ## Browser Support
 
-AEV-PDF works best on modern browsers:
+BentoPDF works best on modern browsers:
 
 - ✅ Chrome/Edge 90+
 - ✅ Firefox 90+
@@ -73,5 +76,5 @@ AEV-PDF works best on modern browsers:
 ## Next Steps
 
 - [Explore all tools](/tools/)
-- [Self-host AEV-PDF](/self-hosting/)
+- [Self-host BentoPDF](/self-hosting/)
 - [Contribute to the project](/contributing)

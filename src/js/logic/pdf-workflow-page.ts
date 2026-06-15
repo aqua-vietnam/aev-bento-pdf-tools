@@ -1,41 +1,39 @@
-import { showAlert } from '../ui.js';
-import { createWorkflowEditor, updateNodeDisplay } from '../workflow/editor';
-import { executeWorkflow } from '../workflow/engine';
-import { getAvailableTesseractLanguageEntries } from '../utils/tesseract-language-availability.js';
+import { showAlert } from '@/js/ui.js';
+import { createWorkflowEditor, updateNodeDisplay } from '@/js/workflow/editor';
+import type { WorkflowEditor } from '@/js/workflow/editor';
+import { executeWorkflow } from '@/js/workflow/engine';
+import { translateCategory, translateNodeLabel } from '@/js/workflow/i18n';
+import type { NodeCategory } from '@/js/workflow/types';
 import {
+  type BaseWorkflowNode,
   nodeRegistry,
   getNodesByCategory,
   createNodeByType,
-} from '../workflow/nodes/registry';
-import { isToolDisabled } from '../utils/disabled-tools.js';
-import type { BaseWorkflowNode } from '../workflow/nodes/base-node';
-import type { WorkflowEditor } from '../workflow/editor';
-import {
   PDFInputNode,
   EncryptedPDFError,
-} from '../workflow/nodes/pdf-input-node';
-import { ImageInputNode } from '../workflow/nodes/image-input-node';
-import { WordToPdfNode } from '../workflow/nodes/word-to-pdf-node';
-import { ExcelToPdfNode } from '../workflow/nodes/excel-to-pdf-node';
-import { PowerPointToPdfNode } from '../workflow/nodes/powerpoint-to-pdf-node';
-import { TextToPdfNode } from '../workflow/nodes/text-to-pdf-node';
-import { SvgToPdfNode } from '../workflow/nodes/svg-to-pdf-node';
-import { EpubToPdfNode } from '../workflow/nodes/epub-to-pdf-node';
-import { EmailToPdfNode } from '../workflow/nodes/email-to-pdf-node';
-import { DigitalSignNode } from '../workflow/nodes/digital-sign-node';
-import { XpsToPdfNode } from '../workflow/nodes/xps-to-pdf-node';
-import { MobiToPdfNode } from '../workflow/nodes/mobi-to-pdf-node';
-import { Fb2ToPdfNode } from '../workflow/nodes/fb2-to-pdf-node';
-import { CbzToPdfNode } from '../workflow/nodes/cbz-to-pdf-node';
-import { MarkdownToPdfNode } from '../workflow/nodes/markdown-to-pdf-node';
-import { JsonToPdfNode } from '../workflow/nodes/json-to-pdf-node';
-import { XmlToPdfNode } from '../workflow/nodes/xml-to-pdf-node';
-import { WpdToPdfNode } from '../workflow/nodes/wpd-to-pdf-node';
-import { WpsToPdfNode } from '../workflow/nodes/wps-to-pdf-node';
-import { PagesToPdfNode } from '../workflow/nodes/pages-to-pdf-node';
-import { OdgToPdfNode } from '../workflow/nodes/odg-to-pdf-node';
-import { PubToPdfNode } from '../workflow/nodes/pub-to-pdf-node';
-import { VsdToPdfNode } from '../workflow/nodes/vsd-to-pdf-node';
+  ImageInputNode,
+  WordToPdfNode,
+  ExcelToPdfNode,
+  PowerPointToPdfNode,
+  TextToPdfNode,
+  SvgToPdfNode,
+  EpubToPdfNode,
+  EmailToPdfNode,
+  DigitalSignNode,
+  XpsToPdfNode,
+  MobiToPdfNode,
+  Fb2ToPdfNode,
+  CbzToPdfNode,
+  MarkdownToPdfNode,
+  JsonToPdfNode,
+  XmlToPdfNode,
+  WpdToPdfNode,
+  WpsToPdfNode,
+  PagesToPdfNode,
+  OdgToPdfNode,
+  PubToPdfNode,
+  VsdToPdfNode,
+} from '@/js/workflow/nodes';
 import {
   saveWorkflow,
   loadWorkflow,
@@ -44,7 +42,10 @@ import {
   getSavedTemplateNames,
   templateNameExists,
   deleteTemplate,
-} from '../workflow/serialization';
+} from '@/js/workflow/serialization';
+import { getAvailableTesseractLanguageEntries } from '@/js/utils/tesseract-language-availability.js';
+import { isToolDisabled } from '@/js/utils/disabled-tools.js';
+import { IMAGE_ACCEPT } from '@/js/utils/image-input-utils.js';
 
 let workflowEditor: WorkflowEditor | null = null;
 let selectedNodeId: string | null = null;
@@ -426,31 +427,22 @@ function buildToolbox() {
   if (!container) return;
 
   const categorized = getNodesByCategory();
-  const categoryOrder: Array<{ key: string; label: string; color: string }> = [
-    { key: 'Input', label: 'Input', color: 'text-blue-400' },
-    {
-      key: 'Edit & Annotate',
-      label: 'Edit & Annotate',
-      color: 'text-indigo-300',
-    },
-    {
-      key: 'Organize & Manage',
-      label: 'Organize & Manage',
-      color: 'text-violet-300',
-    },
-    {
-      key: 'Optimize & Repair',
-      label: 'Optimize & Repair',
-      color: 'text-amber-300',
-    },
-    { key: 'Secure PDF', label: 'Secure PDF', color: 'text-rose-300' },
-    { key: 'Output', label: 'Output', color: 'text-teal-300' },
+  const categoryOrder: Array<{
+    key: NodeCategory;
+    color: string;
+  }> = [
+    { key: 'Input', color: 'text-blue-400' },
+    { key: 'Edit & Annotate', color: 'text-indigo-300' },
+    { key: 'Organize & Manage', color: 'text-violet-300' },
+    { key: 'Optimize & Repair', color: 'text-amber-300' },
+    { key: 'Secure PDF', color: 'text-rose-300' },
+    { key: 'Output', color: 'text-teal-300' },
   ];
 
   for (const cat of categoryOrder) {
-    const entries = (
-      categorized[cat.key as keyof typeof categorized] ?? []
-    ).filter((entry) => !entry.toolPageId || !isToolDisabled(entry.toolPageId));
+    const entries = (categorized[cat.key] ?? []).filter(
+      (entry) => !entry.toolPageId || !isToolDisabled(entry.toolPageId)
+    );
     if (entries.length === 0) continue;
 
     const section = document.createElement('div');
@@ -461,7 +453,7 @@ function buildToolbox() {
     header.type = 'button';
 
     const headerLabel = document.createElement('span');
-    headerLabel.textContent = cat.label;
+    headerLabel.textContent = translateCategory(cat.key);
     header.appendChild(headerLabel);
 
     const chevronWrap = document.createElement('span');
@@ -485,17 +477,19 @@ function buildToolbox() {
       const item = document.createElement('button');
       item.className =
         'toolbox-node-item w-full text-left px-2 py-1.5 rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors text-xs flex items-center gap-2';
-      item.dataset.label = entry.label;
-      item.dataset.type = Object.keys(nodeRegistry).find(
+      const nodeType = Object.keys(nodeRegistry).find(
         (k) => nodeRegistry[k] === entry
       )!;
+      const translatedLabel = translateNodeLabel(nodeType, entry);
+      item.dataset.label = translatedLabel;
+      item.dataset.type = nodeType;
 
       const iconEl = document.createElement('i');
       iconEl.className = `ph ${entry.icon} text-sm flex-shrink-0`;
       item.appendChild(iconEl);
 
       const labelEl = document.createElement('span');
-      labelEl.textContent = entry.label;
+      labelEl.textContent = translatedLabel;
       item.appendChild(labelEl);
 
       item.addEventListener('click', () => {
@@ -765,7 +759,7 @@ function showNodeSettings(node: BaseWorkflowNode) {
 
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
-    fileInput.accept = 'image/*';
+    fileInput.accept = IMAGE_ACCEPT;
     fileInput.multiple = true;
     fileInput.className = 'hidden';
     fileInput.addEventListener('change', async (e) => {
@@ -1291,6 +1285,7 @@ function showNodeSettings(node: BaseWorkflowNode) {
     'subsetFonts',
     'convertToGrayscale',
     'removeThumbnails',
+    'retainPageLabels',
   ]);
   const multiSelectDropdowns = new Set(['language']);
   const advancedControls = new Set(['resolution', 'binarize', 'whitelist']);
@@ -1312,6 +1307,8 @@ function showNodeSettings(node: BaseWorkflowNode) {
     y0: 'Top edge in points',
     x1: 'Right edge in points',
     y1: 'Bottom edge in points',
+    retainPageLabels:
+      "Off (default): natural 1–N numbering. On: each file's original page labels are preserved (may produce duplicate labels).",
   };
 
   const inputClass =

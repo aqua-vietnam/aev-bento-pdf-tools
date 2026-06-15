@@ -1,13 +1,13 @@
 services:
-  AEV-PDF:
+  bentopdf:
     # GitHub Container Registry (Recommended)
-    # simple mode - ghcr.io/alam00000/AEV-PDF-simple:latest
-    # default mode - ghcr.io/alam00000/AEV-PDF:latest
+    # Self-Hosted build - ghcr.io/alam00000/bentopdf-simple:latest
+    # Commercial build  - ghcr.io/alam00000/bentopdf:latest
     # Docker Hub (Alternative)
-    # simple mode - AEV-PDFteam/AEV-PDF-simple:latest
-    # default mode - AEV-PDFteam/AEV-PDF:latest
-    image: ghcr.io/alam00000/AEV-PDF-simple:latest
-    container_name: AEV-PDF
+    # Self-Hosted build - bentopdfteam/bentopdf-simple:latest
+    # Commercial build  - bentopdfteam/bentopdf:latest
+    image: ghcr.io/alam00000/bentopdf-simple:latest
+    container_name: bentopdf
     restart: unless-stopped
     ports:
       - '8080:8080'

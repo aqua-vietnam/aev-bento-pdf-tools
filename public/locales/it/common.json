@@ -7,10 +7,12 @@
     "allTools": "Tutti gli strumenti",
     "docs": "Docs",
     "openMainMenu": "Apri il menu principale",
-    "language": "Lingua"
+    "language": "Lingua",
+    "searchLanguage": "Cerca lingua…",
+    "noLanguagesFound": "Nessuna lingua trovata"
   },
   "donation": {
-    "message": "Ti piace AEV-PDF? Aiutaci a mantenerlo gratuito e open source!",
+    "message": "Ti piace BentoPDF? Aiutaci a mantenerlo gratuito e open source!",
     "button": "Dona"
   },
   "hero": {
@@ -27,7 +29,7 @@
   },
   "features": {
     "title": "Perché scegliere",
-    "AEV-PDF": "AEV-PDF?",
+    "bentoPdf": "BentoPDF?",
     "noSignup": {
       "title": "Nessuna registrazione",
       "description": "Inizia subito, senza account né email."
@@ -96,6 +98,18 @@
       "webpImages": "Immagini WebP"
     }
   },
+  "howItWorks": {
+    "title": "Come funziona",
+    "step1Title": "Carica file",
+    "step1": "Clicca o trascina il tuo file qui",
+    "step2Title": "Elabora",
+    "step2": "Clicca il pulsante di elaborazione",
+    "step3Title": "Scarica",
+    "step3": "Salva il tuo file elaborato istantaneamente"
+  },
+  "relatedTools": {
+    "title": "Strumenti PDF correlati"
+  },
   "loader": {
     "processing": "Elaborazione..."
   },
@@ -121,6 +135,10 @@
     "resetToDefaults": "Reimposta ai valori predefiniti",
     "fullWidthMode": "Modalità a tutta larghezza",
     "fullWidthDescription": "Usa l'intera larghezza dello schermo per tutti gli strumenti invece di un contenitore centrato",
+    "compactMode": "Modalità compatta",
+    "compactModeDescription": "Mostra gli strumenti come elenco compatto invece di schede",
+    "advancedSettings": "Impostazioni avanzate",
+    "advancedSettingsDescription": "Configura moduli di elaborazione esterni (PyMuPDF, Ghostscript, CoherentPDF)",
     "settingsAutoSaved": "Le impostazioni vengono salvate automaticamente",
     "clickToSet": "Clicca per impostare",
     "pressKeys": "Premi i tasti...",
@@ -167,9 +185,10 @@
   "faq": {
     "title": "Domande",
     "questions": "Frequenti",
+    "sectionTitle": "Domande frequenti",
     "isFree": {
-      "question": "AEV-PDF è davvero gratuito?",
-      "answer": "Sì, assolutamente. Tutti gli strumenti su AEV-PDF sono gratuiti al 100%, senza limiti di file, senza registrazioni e senza filigrane. Crediamo che tutti debbano poter accedere a strumenti PDF semplici e potenti senza barriere a pagamento."
+      "question": "BentoPDF è davvero gratuito?",
+      "answer": "Sì, assolutamente. Tutti gli strumenti su BentoPDF sono gratuiti al 100%, senza limiti di file, senza registrazioni e senza filigrane. Crediamo che tutti debbano poter accedere a strumenti PDF semplici e potenti senza barriere a pagamento."
     },
     "areFilesSecure": {
       "question": "I miei file sono sicuri? Dove vengono elaborati?",
@@ -177,29 +196,28 @@
     },
     "platforms": {
       "question": "Funziona su Mac, Windows e dispositivi mobili?",
-      "answer": "Sì! Poiché AEV-PDF viene eseguito interamente nel tuo browser, funziona su qualsiasi sistema operativo con un browser moderno, inclusi Windows, macOS, Linux, iOS e Android."
+      "answer": "Sì! Poiché BentoPDF viene eseguito interamente nel tuo browser, funziona su qualsiasi sistema operativo con un browser moderno, inclusi Windows, macOS, Linux, iOS e Android."
     },
     "gdprCompliant": {
-      "question": "AEV-PDF è conforme al GDPR?",
-      "answer": "Sì. AEV-PDF è pienamente conforme al GDPR. Poiché tutte le elaborazioni avvengono localmente nel tuo browser e non raccogliamo né trasmettiamo i tuoi file a server, non abbiamo accesso ai tuoi dati. Questo garantisce che tu abbia sempre il controllo sui tuoi documenti."
+      "question": "BentoPDF è conforme al GDPR?",
+      "answer": "Sì. BentoPDF è pienamente conforme al GDPR. Poiché tutte le elaborazioni avvengono localmente nel tuo browser e non raccogliamo né trasmettiamo i tuoi file a server, non abbiamo accesso ai tuoi dati. Questo garantisce che tu abbia sempre il controllo sui tuoi documenti."
     },
     "dataStorage": {
       "question": "Conservate o tracciate i miei file?",
-      "answer": "No. Non conserviamo, tracciamo né registriamo i tuoi file. Tutto ciò che fai su AEV-PDF avviene nella memoria del tuo browser e scompare quando chiudi la pagina. Non ci sono upload, né log di cronologia, né server coinvolti."
+      "answer": "No. Non conserviamo, tracciamo né registriamo i tuoi file. Tutto ciò che fai su BentoPDF avviene nella memoria del tuo browser e scompare quando chiudi la pagina. Non ci sono upload, né log di cronologia, né server coinvolti."
     },
     "different": {
-      "question": "Cosa rende AEV-PDF diverso dagli altri strumenti PDF?",
-      "answer": "La maggior parte degli strumenti PDF carica i file su un server per l'elaborazione. AEV-PDF non lo fa mai. Utilizziamo tecnologie web moderne e sicure per elaborare i tuoi file direttamente nel browser. Questo significa prestazioni più rapide, maggiore privacy e tranquillità."
+      "question": "Cosa rende BentoPDF diverso dagli altri strumenti PDF?",
+      "answer": "La maggior parte degli strumenti PDF carica i file su un server per l'elaborazione. BentoPDF non lo fa mai. Utilizziamo tecnologie web moderne e sicure per elaborare i tuoi file direttamente nel browser. Questo significa prestazioni più rapide, maggiore privacy e tranquillità."
     },
     "browserBased": {
       "question": "In che modo l'elaborazione nel browser mi protegge?",
-      "answer": "Eseguendosi interamente nel browser, AEV-PDF garantisce che i tuoi file non lascino mai il tuo dispositivo. Questo elimina i rischi di attacchi ai server, violazioni dei dati o accessi non autorizzati. I tuoi file restano sempre tuoi."
+      "answer": "Eseguendosi interamente nel browser, BentoPDF garantisce che i tuoi file non lascino mai il tuo dispositivo. Questo elimina i rischi di attacchi ai server, violazioni dei dati o accessi non autorizzati. I tuoi file restano sempre tuoi."
     },
     "analytics": {
       "question": "Usate cookie o analytics per tracciarmi?",
-      "answer": "Ci teniamo alla tua privacy. AEV-PDF non traccia informazioni personali. Usiamo Simple Analytics solo per visualizzare conteggi di visite anonime. Questo significa che possiamo sapere quante persone visitano il sito, ma non chi sei. Simple Analytics è pienamente conforme al GDPR e rispetta la tua privacy."
-    },
-    "sectionTitle": "Domande frequenti"
+      "answer": "Ci teniamo alla tua privacy. BentoPDF non traccia informazioni personali. Usiamo Simple Analytics solo per visualizzare conteggi di visite anonime. Questo significa che possiamo sapere quante persone visitano il sito, ma non chi sei. Simple Analytics è pienamente conforme al GDPR e rispetta la tua privacy."
+    }
   },
   "testimonials": {
     "title": "Cosa",
@@ -208,11 +226,11 @@
   },
   "support": {
     "title": "Ti piace il mio lavoro?",
-    "description": "AEV-PDF è un progetto nato per passione, creato per offrire una cassetta degli attrezzi PDF gratuita, privata e potente per tutti. Se lo trovi utile, considera di supportarne lo sviluppo. Ogni caffè aiuta!",
+    "description": "BentoPDF è un progetto nato per passione, creato per offrire una cassetta degli attrezzi PDF gratuita, privata e potente per tutti. Se lo trovi utile, considera di supportarne lo sviluppo. Ogni caffè aiuta!",
     "buyMeCoffee": "Offrimi un caffè"
   },
   "footer": {
-    "copyright": "© 2026 AEV-PDF. Tutti i diritti riservati.",
+    "copyright": "© 2026 BentoPDF. Tutti i diritti riservati.",
     "version": "Versione",
     "company": "Azienda",
     "aboutUs": "Chi siamo",
@@ -252,11 +270,14 @@
     "add": "Aggiungi",
     "remove": "Rimuovi",
     "loading": "Caricamento...",
+    "loadingPageCount": "Caricamento pagine...",
     "error": "Errore",
     "success": "Successo",
     "file": "File",
     "files": "File",
-    "close": "Chiudi"
+    "close": "Chiudi",
+    "convert": "Converti",
+    "unknownError": "Errore sconosciuto"
   },
   "about": {
     "hero": {
@@ -271,10 +292,10 @@
     "philosophy": {
       "label": "La nostra filosofia fondamentale",
       "title": "Prima la privacy. Sempre.",
-      "description": "In un'epoca in cui i dati sono una merce, adottiamo un approccio diverso. Tutte le elaborazioni per gli strumenti AEV-PDF avvengono localmente nel tuo browser. Questo significa che i tuoi file non toccano mai i nostri server, non vediamo i tuoi documenti e non tracciamo ciò che fai. I tuoi documenti restano completamente e inequivocabilmente privati. Non è solo una funzionalità; è il nostro fondamento."
+      "description": "In un'epoca in cui i dati sono una merce, adottiamo un approccio diverso. Tutte le elaborazioni per gli strumenti BentoPDF avvengono localmente nel tuo browser. Questo significa che i tuoi file non toccano mai i nostri server, non vediamo i tuoi documenti e non tracciamo ciò che fai. I tuoi documenti restano completamente e inequivocabilmente privati. Non è solo una funzionalità; è il nostro fondamento."
     },
-    "whyAEV-PDF": {
-      "title": "Perché AEV-PDF",
+    "whyBentopdf": {
+      "title": "Perché BentoPDF",
       "speed": {
         "title": "Progettato per la velocità",
         "description": "Nessuna attesa per upload o download verso un server. Elaborando i file direttamente nel browser con tecnologie web moderne come WebAssembly, offriamo una velocità impareggiabile per tutti i nostri strumenti."
@@ -294,7 +315,7 @@
     },
     "cta": {
       "title": "Pronto per iniziare?",
-      "description": "Unisciti a migliaia di utenti che si affidano a AEV-PDF per le loro esigenze quotidiane sui documenti. Sperimenta la differenza che privacy e prestazioni possono offrire.",
+      "description": "Unisciti a migliaia di utenti che si affidano a BentoPDF per le loro esigenze quotidiane sui documenti. Sperimenta la differenza che privacy e prestazioni possono offrire.",
       "button": "Esplora tutti gli strumenti"
     }
   },
@@ -329,9 +350,12 @@
     "download": "Scarica:",
     "downloadSelected": "Scarica selezionati",
     "exportPdf": "Esporta PDF",
-    "uploadPdfFiles": "Seleziona file PDF",
-    "dragAndDrop": "Trascina e rilascia i file PDF qui, oppure clicca per selezionare",
+    "uploadPdfFiles": "Seleziona file PDF o immagini",
+    "dragAndDrop": "Trascina e rilascia file PDF o immagini qui, oppure clicca per selezionare",
     "selectFiles": "Seleziona file",
+    "dropToAdd": "Rilascia file PDF o immagini per aggiungere",
+    "convertingImages": "Conversione delle immagini in PDF...",
+    "failedToConvertImages": "Impossibile convertire le immagini in PDF.",
     "renderingPages": "Generazione anteprime pagine...",
     "actions": {
       "duplicatePage": "Duplica questa pagina",
@@ -349,15 +373,6 @@
     "errorRendering": "Impossibile generare le miniature delle pagine",
     "error": "Errore",
     "failedToLoad": "Caricamento fallito"
-  },
-  "howItWorks": {
-    "title": "Come funziona",
-    "step1": "Clicca o trascina il tuo file qui",
-    "step2": "Clicca il pulsante di elaborazione",
-    "step3": "Salva il tuo file elaborato istantaneamente"
-  },
-  "relatedTools": {
-    "title": "Strumenti PDF correlati"
   },
   "simpleMode": {
     "title": "Strumenti PDF",

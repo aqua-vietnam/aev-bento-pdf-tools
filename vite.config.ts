@@ -34,7 +34,8 @@ const SUPPORTED_LANGUAGES = [
   'zh-TW',
   'ko',
   'ja',
-  'ua',
+  'uk',
+  'sk',
 ] as const;
 const LANG_REGEX = new RegExp(
   `^/(${SUPPORTED_LANGUAGES.join('|')})(?:/(.*))?$`
@@ -207,7 +208,12 @@ function buildCorsProxyAllowedHosts(): Set<string> {
     'cdn.jsdelivr.net',
     'fonts.googleapis.com',
     'fonts.gstatic.com',
-    'AEV-PDF-cors-proxy.AEV-PDF.workers.dev',
+    'bentopdf-cors-proxy.bentopdf.workers.dev',
+    'timestamp.digicert.com',
+    'timestamp.sectigo.com',
+    'ts.ssl.com',
+    'freetsa.org',
+    'tsa.mesign.com',
   ]);
 
   const envHostSources = [
@@ -530,6 +536,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@/types': resolve(__dirname, 'src/js/types/index.ts'),
+        '@': resolve(__dirname, 'src'),
         stream: 'stream-browserify',
         zlib: 'browserify-zlib',
       },
@@ -759,6 +766,15 @@ export default defineConfig(({ mode }) => {
             __dirname,
             'src/pages/bates-numbering.html'
           ),
+        },
+        output: {
+          assetFileNames: (assetInfo) => {
+            const name = assetInfo.names?.[0] ?? '';
+            if (name.endsWith('.mjs')) {
+              return 'assets/[name]-[hash].js';
+            }
+            return 'assets/[name]-[hash][extname]';
+          },
         },
       },
     },

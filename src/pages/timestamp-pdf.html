@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <title>
-      Timestamp PDF Online Free - RFC 3161 Document Timestamp | AEV-PDF
+      Timestamp PDF Online Free - RFC 3161 Document Timestamp | BentoPDF
     </title>
     <meta
       name="title"
-      content="Timestamp PDF Online Free - RFC 3161 Document Timestamp | AEV-PDF"
+      content="Timestamp PDF Online Free - RFC 3161 Document Timestamp | BentoPDF"
     />
     <meta
       name="description"
@@ -19,19 +19,19 @@
       name="keywords"
       content="timestamp pdf, rfc 3161, tsa server, document timestamp, time stamp authority, pdf timestamp"
     />
-    <meta name="author" content="AEV-PDF" />
+    <meta name="author" content="BentoPDF" />
     <meta
       name="robots"
       content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
     />
 
-    <link rel="canonical" href="https://www.AEV-PDF.com/timestamp-pdf.html" />
+    <link rel="canonical" href="https://www.bentopdf.com/timestamp-pdf" />
 
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://www.AEV-PDF.com/timestamp-pdf" />
+    <meta property="og:url" content="https://www.bentopdf.com/timestamp-pdf" />
     <meta
       property="og:title"
-      content="Timestamp PDF Online Free - RFC 3161 Document Timestamp | AEV-PDF"
+      content="Timestamp PDF Online Free - RFC 3161 Document Timestamp | BentoPDF"
     />
     <meta
       property="og:description"
@@ -39,14 +39,14 @@
     />
     <meta
       property="og:image"
-      content="https://www.AEV-PDF.com/images/og-timestamp-pdf.png"
+      content="https://www.bentopdf.com/images/og-timestamp-pdf.png"
     />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:site_name" content="AEV-PDF" />
+    <meta property="og:site_name" content="BentoPDF" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://www.AEV-PDF.com/timestamp-pdf" />
+    <meta name="twitter:url" content="https://www.bentopdf.com/timestamp-pdf" />
     <meta name="twitter:title" content="Timestamp PDF Free" />
     <meta
       name="twitter:description"
@@ -54,9 +54,9 @@
     />
     <meta
       name="twitter:image"
-      content="https://www.AEV-PDF.com/images/twitter-timestamp-pdf.png"
+      content="https://www.bentopdf.com/images/twitter-timestamp-pdf.png"
     />
-    <meta name="twitter:site" content="@AEV-PDF" />
+    <meta name="twitter:site" content="@BentoPDF" />
 
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -194,41 +194,41 @@
               class="w-full bg-gray-700 border border-gray-600 text-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             ></select>
           </div>
-        </div>
 
-        <button
-          id="process-btn"
-          class="hidden w-full mt-6 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
-          disabled
-        >
-          <i data-lucide="clock" class="w-5 h-5"></i>
-          <span data-i18n="tools:timestampPdf.applyTimestamp"
-            >Apply Timestamp</span
+          <button
+            id="process-btn"
+            class="btn-gradient w-full mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled
+            data-i18n="tools:timestampPdf.applyTimestamp"
           >
-        </button>
+            Apply Timestamp
+          </button>
+        </div>
       </div>
     </div>
 
+    <!-- Loader Modal -->
     <div
-      id="loader-overlay"
-      class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center"
+      id="loader-modal"
+      class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
     >
-      <div class="text-center">
-        <div
-          class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-indigo-400 border-t-transparent mb-4"
-        ></div>
+      <div
+        class="bg-gray-800 p-8 rounded-lg flex flex-col items-center gap-4 border border-gray-700 shadow-xl"
+      >
+        <div class="solid-spinner"></div>
         <p id="loader-text" class="text-white text-lg font-medium">
           Processing...
         </p>
       </div>
     </div>
 
+    <!-- Alert Modal -->
     <div
-      id="alert-overlay"
-      class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center"
+      id="alert-modal"
+      class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-50 hidden"
     >
       <div
-        class="bg-gray-800 rounded-xl shadow-xl p-6 max-w-md w-full mx-4 border border-gray-700"
+        class="bg-gray-800 rounded-lg shadow-xl p-6 max-w-sm w-full border border-gray-700"
       >
         <h3
           id="alert-title"
@@ -422,18 +422,13 @@
       {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
-        "name": "Timestamp PDF - AEV-PDF",
+        "name": "Timestamp PDF - BentoPDF",
         "applicationCategory": "PDF Tool",
         "operatingSystem": "Any - Web Browser",
         "offers": {
           "@type": "Offer",
           "price": "0",
           "priceCurrency": "USD"
-        },
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "4.9",
-          "ratingCount": "1850"
         }
       }
     </script>
@@ -443,7 +438,7 @@
         "@context": "https://schema.org",
         "@type": "HowTo",
         "name": "How to add a timestamp to PDF",
-        "description": "Learn how to add an RFC 3161 document timestamp to PDF using AEV-PDF",
+        "description": "Learn how to add an RFC 3161 document timestamp to PDF using BentoPDF",
         "step": [
           {
             "@type": "HowToStep",
@@ -476,13 +471,13 @@
             "@type": "ListItem",
             "position": 1,
             "name": "Home",
-            "item": "https://www.AEV-PDF.com"
+            "item": "https://www.bentopdf.com"
           },
           {
             "@type": "ListItem",
             "position": 2,
             "name": "Timestamp PDF",
-            "item": "https://www.AEV-PDF.com/timestamp-pdf"
+            "item": "https://www.bentopdf.com/timestamp-pdf"
           }
         ]
       }

@@ -1,9 +1,20 @@
 import { defineConfig } from 'vitepress'
 
+const SITE_URL = 'https://www.bentopdf.com'
+
 export default defineConfig({
     title: "AEV-PDF Docs",
     description: "Documentation for AEV-PDF - The free, open-source, privacy-first PDF toolkit",
     base: '/docs/',
+    cleanUrls: true,
+
+    transformPageData(pageData) {
+        const relPath = pageData.relativePath.replace(/\.md$/, '')
+        const slug = relPath === 'index' ? '' : relPath.replace(/\/index$/, '/')
+        const canonicalUrl = slug ? `${SITE_URL}/docs/${slug}` : `${SITE_URL}/docs/`
+        pageData.frontmatter.head ??= []
+        pageData.frontmatter.head.push(['link', { rel: 'canonical', href: canonicalUrl }])
+    },
 
     themeConfig: {
         logo: '/images/favicon-no-bg.svg',

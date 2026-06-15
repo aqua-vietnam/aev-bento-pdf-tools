@@ -1,21 +1,25 @@
-# Simple Mode for AEV-PDF
+# Simple Mode for BentoPDF (the Self-Hosted build)
 
-Simple Mode is designed for internal organizational use where you want to hide all branding and marketing content, showing only the essential PDF tools for your users.
+Simple Mode is what powers the **Self-Hosted build** of BentoPDF (`bentopdf-simple`). It is **functionally identical** to the Commercial build that powers bentopdf.com — every PDF tool is present and behaves the same. It just hides the marketing chrome (hero, FAQ, testimonials, footer) that only makes sense on the public bentopdf.com site or on a commercial public-facing deployment.
 
-## What Simple Mode Does
+> **Simple Mode is not a feature-reduced "lite" version.** Every PDF tool — merge, split, edit, sign, OCR, Office conversion, every other tool — works identically in both builds. The only difference is the marketing UI around the tools.
 
-When enabled, Simple Mode will:
+The Commercial build (`ghcr.io/alam00000/bentopdf:latest`) is used by bentopdf.com itself and by commercial license holders running public-facing PDF deployments where the full marketing site makes sense.
 
-- Hide the navigation bar
-- Hide the hero section with marketing content
-- Hide the features section
-- Hide the security/compliance section
-- Hide the FAQ section
-- Hide the testimonials section
-- Hide the support section
-- Hide the footer
-- Update the page title to "PDF Tools"
-- Make the tools section more prominent
+## What Simple Mode Hides
+
+When enabled, Simple Mode hides the following bentopdf.com-specific marketing UI:
+
+- Navigation bar
+- Hero section with marketing content
+- Features section
+- Security/compliance section
+- FAQ section
+- Testimonials section
+- Support section
+- Footer
+
+It also updates the page title to "PDF Tools" and makes the tools section more prominent. **No PDF tools are removed or disabled.**
 
 ## How to Enable Simple Mode
 
@@ -27,32 +31,32 @@ Use the pre-built Simple Mode image directly:
 
 ```bash
 # Docker
-docker run -p 3000:8080 ghcr.io/alam00000/AEV-PDF-simple:latest
+docker run -p 3000:8080 ghcr.io/alam00000/bentopdf-simple:latest
 
 # Podman
-podman run -p 3000:8080 ghcr.io/alam00000/AEV-PDF-simple:latest
+podman run -p 3000:8080 ghcr.io/alam00000/bentopdf-simple:latest
 ```
 
 **Using Docker Hub:**
 
 ```bash
 # Docker
-docker run -p 3000:8080 AEV-PDFteam/AEV-PDF-simple:latest
+docker run -p 3000:8080 bentopdfteam/bentopdf-simple:latest
 
 # Podman
-podman run -p 3000:8080 docker.io/AEV-PDFteam/AEV-PDF-simple:latest
+podman run -p 3000:8080 docker.io/bentopdfteam/bentopdf-simple:latest
 ```
 
 Or with Docker Compose / Podman Compose:
 
 ```yaml
 services:
-  AEV-PDF:
+  bentopdf:
     # Using GitHub Container Registry (Recommended)
-    image: ghcr.io/alam00000/AEV-PDF-simple:latest
+    image: ghcr.io/alam00000/bentopdf-simple:latest
     # Or using Docker Hub
-    # image: AEV-PDFteam/AEV-PDF-simple:latest
-    container_name: AEV-PDF
+    # image: bentopdfteam/bentopdf-simple:latest
+    container_name: bentopdf
     restart: unless-stopped
     ports:
       - '3000:8080'
@@ -72,8 +76,8 @@ docker compose -f docker-compose.dev.yml up -d
 Build the image with the SIMPLE_MODE build argument:
 
 ```bash
-docker build --build-arg SIMPLE_MODE=true -t AEV-PDF-simple .
-docker run -p 3000:8080 AEV-PDF-simple
+docker build --build-arg SIMPLE_MODE=true -t bentopdf-simple .
+docker run -p 3000:8080 bentopdf-simple
 ```
 
 ### Method 4: Using npm Script (Easiest for Local Development)
@@ -114,12 +118,12 @@ This automatically builds and serves Simple Mode on `http://localhost:3000`.
 
 ```bash
 # Docker - Pull and run the Simple Mode image
-docker pull ghcr.io/alam00000/AEV-PDF-simple:latest
-docker run -p 3000:8080 ghcr.io/alam00000/AEV-PDF-simple:latest
+docker pull ghcr.io/alam00000/bentopdf-simple:latest
+docker run -p 3000:8080 ghcr.io/alam00000/bentopdf-simple:latest
 
 # Podman
-podman pull ghcr.io/alam00000/AEV-PDF-simple:latest
-podman run -p 3000:8080 ghcr.io/alam00000/AEV-PDF-simple:latest
+podman pull ghcr.io/alam00000/bentopdf-simple:latest
+podman run -p 3000:8080 ghcr.io/alam00000/bentopdf-simple:latest
 ```
 
 Open `http://localhost:3000` in your browser.
@@ -136,20 +140,20 @@ npx serve dist -p 3000
 
 Open `http://localhost:3000` in your browser.
 
-### Method 4: Compare Both Modes
+### Method 4: Compare Both Builds Side-by-Side
 
 ```bash
-# Test Normal Mode (Docker)
-docker run -p 3000:8080 ghcr.io/alam00000/AEV-PDF:latest
+# Commercial build (the bentopdf.com look)
+docker run -p 3000:8080 ghcr.io/alam00000/bentopdf:latest
 
-# Test Simple Mode (Docker)
-docker run -p 3001:8080 ghcr.io/alam00000/AEV-PDF-simple:latest
+# Self-Hosted build (Simple Mode)
+docker run -p 3001:8080 ghcr.io/alam00000/bentopdf-simple:latest
 
 # Podman users: replace 'docker' with 'podman'
 ```
 
-- Normal Mode: `http://localhost:3000`
-- Simple Mode: `http://localhost:3001`
+- Commercial build: `http://localhost:3000`
+- Self-Hosted build: `http://localhost:3001`
 
 ## 🔍 What to Look For
 
@@ -165,29 +169,31 @@ When Simple Mode is working correctly, you should see:
 
 ## 📦 Available Container Images
 
-### Normal Mode (Full Branding)
+### Self-Hosted build (Simple Mode) — recommended for self-hosting
 
 **GitHub Container Registry (Recommended):**
 
-- `ghcr.io/alam00000/AEV-PDF:latest`
-- `ghcr.io/alam00000/AEV-PDF:v1.0.0` (versioned)
+- `ghcr.io/alam00000/bentopdf-simple:latest`
+- `ghcr.io/alam00000/bentopdf-simple:v1.0.0` (versioned)
 
 **Docker Hub:**
 
-- `AEV-PDFteam/AEV-PDF:latest`
-- `AEV-PDFteam/AEV-PDF:v1.0.0` (versioned)
+- `bentopdfteam/bentopdf-simple:latest`
+- `bentopdfteam/bentopdf-simple:v1.0.0` (versioned)
 
-### Simple Mode (Clean Interface)
+### Commercial build — used by bentopdf.com and commercial license holders
+
+The full marketing site, including hero/FAQ/testimonials/footer. Pull this only if you specifically want the bentopdf.com look — for example, you're running a public-facing PDF deployment under a commercial license.
 
 **GitHub Container Registry (Recommended):**
 
-- `ghcr.io/alam00000/AEV-PDF-simple:latest`
-- `ghcr.io/alam00000/AEV-PDF-simple:v1.0.0` (versioned)
+- `ghcr.io/alam00000/bentopdf:latest`
+- `ghcr.io/alam00000/bentopdf:v1.0.0` (versioned)
 
 **Docker Hub:**
 
-- `AEV-PDFteam/AEV-PDF-simple:latest`
-- `AEV-PDFteam/AEV-PDF-simple:v1.0.0` (versioned)
+- `bentopdfteam/bentopdf:latest`
+- `bentopdfteam/bentopdf:v1.0.0` (versioned)
 
 ## 🚀 Production Deployment Examples
 
@@ -195,10 +201,10 @@ When Simple Mode is working correctly, you should see:
 
 ```yaml
 services:
-  AEV-PDF:
-    image: ghcr.io/alam00000/AEV-PDF-simple:latest # Recommended
-    # image: AEV-PDFteam/AEV-PDF-simple:latest     # Alternative: Docker Hub
-    container_name: AEV-PDF
+  bentopdf:
+    image: ghcr.io/alam00000/bentopdf-simple:latest # Recommended
+    # image: bentopdfteam/bentopdf-simple:latest     # Alternative: Docker Hub
+    container_name: bentopdf
     restart: unless-stopped
     ports:
       - '80:8080'
@@ -209,16 +215,16 @@ services:
 
 ### Podman Quadlet (Linux Systemd)
 
-Create `~/.config/containers/systemd/AEV-PDF-simple.container`:
+Create `~/.config/containers/systemd/bentopdf-simple.container`:
 
 ```ini
 [Unit]
-Description=AEV-PDF Simple Mode
+Description=BentoPDF Simple Mode
 After=network-online.target
 
 [Container]
-Image=ghcr.io/alam00000/AEV-PDF-simple:latest
-ContainerName=AEV-PDF-simple
+Image=ghcr.io/alam00000/bentopdf-simple:latest
+ContainerName=bentopdf-simple
 PublishPort=80:8080
 AutoUpdate=registry
 
@@ -233,12 +239,12 @@ Enable and start:
 
 ```bash
 systemctl --user daemon-reload
-systemctl --user enable --now AEV-PDF-simple
+systemctl --user enable --now bentopdf-simple
 ```
 
 ## ⚠️ Important Notes
 
-- **Pre-built images**: Use `ghcr.io/alam00000/AEV-PDF-simple:latest` for Simple Mode (recommended)
+- **Pre-built images**: Use `ghcr.io/alam00000/bentopdf-simple:latest` for Simple Mode (recommended)
 - **Environment variables**: `SIMPLE_MODE=true` only works during build, not runtime
 - **Build-time optimization**: Simple Mode uses dead code elimination for smaller bundles
 - **Same functionality**: All PDF tools work identically in both modes

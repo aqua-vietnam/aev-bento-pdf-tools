@@ -5,31 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- Primary Meta Tags -->
-    <title>Txt To Pdf Online Free - Txt To Pdf Tool | AEV-PDF</title>
     <meta
       name="title"
-      content="Txt To Pdf Online Free - Txt To Pdf Tool | AEV-PDF"
+      content="Txt To Pdf Online Free - Txt To Pdf Tool | BentoPDF"
     />
     <meta
       name="description"
       content="★ Txt To Pdf online free - Txt to pdf PDFs easily ★ No signup ★ Unlimited files ★ Privacy-first ★ Works in browser ★ Fast & secure"
     />
     <meta name="keywords" content="txt to pdf, txt to pdf, online pdf" />
-    <meta name="author" content="AEV-PDF" />
+    <meta name="author" content="BentoPDF" />
     <meta
       name="robots"
       content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
     />
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://www.AEV-PDF.com/txt-to-pdf.html" />
+    <link rel="canonical" href="https://www.bentopdf.com/txt-to-pdf" />
 
     <!-- Open Graph / Facebook / LinkedIn -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://www.AEV-PDF.com/txt-to-pdf" />
+    <meta property="og:url" content="https://www.bentopdf.com/txt-to-pdf" />
     <meta
       property="og:title"
-      content="Txt To Pdf Online Free - Txt To Pdf Tool | AEV-PDF"
+      content="Txt To Pdf Online Free - Txt To Pdf Tool | BentoPDF"
     />
     <meta
       property="og:description"
@@ -37,15 +36,15 @@
     />
     <meta
       property="og:image"
-      content="https://www.AEV-PDF.com/images/og-txt-to-pdf.png"
+      content="https://www.bentopdf.com/images/og-txt-to-pdf.png"
     />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:site_name" content="AEV-PDF" />
+    <meta property="og:site_name" content="BentoPDF" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://www.AEV-PDF.com/txt-to-pdf" />
+    <meta name="twitter:url" content="https://www.bentopdf.com/txt-to-pdf" />
     <meta name="twitter:title" content="Txt To Pdf Free" />
     <meta
       name="twitter:description"
@@ -53,16 +52,16 @@
     />
     <meta
       name="twitter:image"
-      content="https://www.AEV-PDF.com/images/twitter-txt-to-pdf.png"
+      content="https://www.bentopdf.com/images/twitter-txt-to-pdf.png"
     />
-    <meta name="twitter:site" content="@AEV-PDF" />
+    <meta name="twitter:site" content="@BentoPDF" />
 
     <!-- Mobile Web App -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Txt To Pdf" />
 
-    <title>Text to PDF - AEV-PDF</title>
+    <title>Text to PDF - BentoPDF</title>
     <meta
       name="description"
       content="Convert text files or typed text to PDF format with custom formatting. Free, secure, and runs entirely in your browser."
@@ -134,12 +133,14 @@
             <button
               id="txt-mode-upload-btn"
               class="flex-1 btn bg-indigo-600 text-white font-semibold py-2 rounded-md"
+              data-i18n="tools:textToPdf.uploadFiles"
             >
               Upload Files
             </button>
             <button
               id="txt-mode-text-btn"
               class="flex-1 btn bg-gray-700 text-gray-300 font-semibold py-2 rounded-md"
+              data-i18n="tools:textToPdf.typeText"
             >
               Type Text
             </button>
@@ -162,7 +163,12 @@
                   >
                   <span data-i18n="upload.orDragAndDrop">or drag and drop</span>
                 </p>
-                <p class="text-xs text-gray-500">Text files (.txt)</p>
+                <p
+                  class="text-xs text-gray-500"
+                  data-i18n="tools:textToPdf.acceptedFormats"
+                >
+                  Text files (.txt)
+                </p>
                 <p
                   class="text-xs text-gray-500"
                   data-i18n="upload.filesNeverLeave"
@@ -216,6 +222,7 @@
             <label
               for="font-family"
               class="block mb-2 text-sm font-medium text-gray-300"
+              data-i18n="tools:textToPdf.fontFamily"
               >Font Family</label
             >
             <select
@@ -232,6 +239,7 @@
             <label
               for="font-size"
               class="block mb-2 text-sm font-medium text-gray-300"
+              data-i18n="tools:textToPdf.fontSize"
               >Font Size</label
             >
             <input
@@ -247,6 +255,7 @@
             <label
               for="text-color"
               class="block mb-2 text-sm font-medium text-gray-300"
+              data-i18n="tools:textToPdf.textColor"
               >Text Color</label
             >
             <input type="color" id="text-color" value="#000000" />
@@ -255,6 +264,7 @@
             <label
               for="page-size"
               class="block mb-2 text-sm font-medium text-gray-300"
+              data-i18n="tools:textToPdf.pageSize"
               >Page Size</label
             >
             <select
@@ -313,11 +323,17 @@
 
         <p class="text-xs text-gray-500 mt-3">
           <i data-lucide="info" class="inline w-3 h-3"></i>
-          RTL languages (Arabic, Urdu, Persian, etc.) are automatically detected
-          and text direction is adjusted.
+          <span data-i18n="tools:textToPdf.rtlAutoDetectNote"
+            >RTL languages (Arabic, Urdu, Persian, etc.) are automatically
+            detected and text direction is adjusted.</span
+          >
         </p>
 
-        <button id="process-btn" class="btn-gradient w-full mt-6">
+        <button
+          id="process-btn"
+          class="btn-gradient w-full mt-6"
+          data-i18n="tools:textToPdf.createButton"
+        >
           Create PDF
         </button>
       </div>
@@ -484,7 +500,7 @@
             <i data-lucide="chevron-down" class="w-5 h-5"></i>
           </summary>
           <p class="mt-3 text-gray-400">
-            Yes! AEV-PDF is 100% free with no hidden fees, no signup required,
+            Yes! BentoPDF is 100% free with no hidden fees, no signup required,
             and unlimited file processing.
           </p>
         </details>
@@ -527,18 +543,13 @@
       {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
-        "name": "Txt To Pdf - AEV-PDF",
+        "name": "Txt To Pdf - BentoPDF",
         "applicationCategory": "PDF Tool",
         "operatingSystem": "Any - Web Browser",
         "offers": {
           "@type": "Offer",
           "price": "0",
           "priceCurrency": "USD"
-        },
-        "aggregateRating": {
-          "@type": "AggregateRating",
-          "ratingValue": "4.9",
-          "ratingCount": "2303"
         }
       }
     </script>
@@ -548,7 +559,7 @@
         "@context": "https://schema.org",
         "@type": "HowTo",
         "name": "How to txt to pdf online",
-        "description": "Learn how to txt to pdf using AEV-PDF",
+        "description": "Learn how to txt to pdf using BentoPDF",
         "step": [
           {
             "@type": "HowToStep",
@@ -581,13 +592,13 @@
             "@type": "ListItem",
             "position": 1,
             "name": "Home",
-            "item": "https://www.AEV-PDF.com"
+            "item": "https://www.bentopdf.com"
           },
           {
             "@type": "ListItem",
             "position": 2,
             "name": "Txt To Pdf",
-            "item": "https://www.AEV-PDF.com/txt-to-pdf"
+            "item": "https://www.bentopdf.com/txt-to-pdf"
           }
         ]
       }

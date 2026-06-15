@@ -7,10 +7,12 @@
     "allTools": "Tüm Araçlar",
     "docs": "Docs",
     "openMainMenu": "Ana menüyü aç",
-    "language": "Dil"
+    "language": "Dil",
+    "searchLanguage": "Dil ara…",
+    "noLanguagesFound": "Dil bulunamadı"
   },
   "donation": {
-    "message": "AEV-PDF'i seviyor musunuz? Ücretsiz ve açık kaynaklı kalmasına yardımcı olun!",
+    "message": "BentoPDF'i seviyor musunuz? Ücretsiz ve açık kaynaklı kalmasına yardımcı olun!",
     "button": "Bağış Yap"
   },
   "hero": {
@@ -27,7 +29,7 @@
   },
   "features": {
     "title": "Neden",
-    "AEV-PDF": "AEV-PDF'yi seçmelisiniz?",
+    "bentoPdf": "BentoPDF'yi seçmelisiniz?",
     "noSignup": {
       "title": "Kayıt Gerekmez",
       "description": "Hemen başlayın, hesap veya e-posta gerekmez."
@@ -96,6 +98,18 @@
       "webpImages": "WebP Görüntüler"
     }
   },
+  "howItWorks": {
+    "title": "Nasıl Çalışır",
+    "step1Title": "Dosya Yükle",
+    "step1": "Dosyanızı tıklayın veya sürükleyin",
+    "step2Title": "İşle",
+    "step2": "İşlem düğmesine tıklayın",
+    "step3Title": "İndir",
+    "step3": "İşlenmiş dosyanızı anında kaydedin"
+  },
+  "relatedTools": {
+    "title": "İlgili PDF Araçları"
+  },
   "loader": {
     "processing": "İşleniyor..."
   },
@@ -121,6 +135,10 @@
     "resetToDefaults": "Varsayılanlara Sıfırla",
     "fullWidthMode": "Tam Genişlik Modu",
     "fullWidthDescription": "Ortalanmış bir konteyner yerine tüm ekran genişliğini kullan",
+    "compactMode": "Kompakt Mod",
+    "compactModeDescription": "Araçları kart yerine kompakt liste olarak göster",
+    "advancedSettings": "Gelişmiş Ayarlar",
+    "advancedSettingsDescription": "Harici işleme modüllerini yapılandır (PyMuPDF, Ghostscript, CoherentPDF)",
     "settingsAutoSaved": "Ayarlar otomatik olarak kaydedildi",
     "clickToSet": "Ayarlamak için tıklayın",
     "pressKeys": "Tuşlara basın...",
@@ -167,9 +185,10 @@
   "faq": {
     "title": "Sıkça Sorulan",
     "questions": "Sorular",
+    "sectionTitle": "Sıkça Sorulan Sorular",
     "isFree": {
-      "question": "AEV-PDF gerçekten ücretsiz mi?",
-      "answer": "Evet, kesinlikle. AEV-PDF'deki tüm araçlar %100 ücretsizdir, dosya sınırı yoktur, kayıt gerekmez ve filigran eklenmez. Herkesin ödeme duvarı olmadan basit, güçlü PDF araçlarına erişimi hak ettiğine inanıyoruz."
+      "question": "BentoPDF gerçekten ücretsiz mi?",
+      "answer": "Evet, kesinlikle. BentoPDF'deki tüm araçlar %100 ücretsizdir, dosya sınırı yoktur, kayıt gerekmez ve filigran eklenmez. Herkesin ödeme duvarı olmadan basit, güçlü PDF araçlarına erişimi hak ettiğine inanıyoruz."
     },
     "areFilesSecure": {
       "question": "Dosyalarım güvende mi? Nerede işleniyorlar?",
@@ -177,29 +196,28 @@
     },
     "platforms": {
       "question": "Mac, Windows ve Mobil'de çalışıyor mu?",
-      "answer": "Evet! AEV-PDF tamamen tarayıcınızda çalıştığı için, Windows, macOS, Linux, iOS ve Android dahil modern bir web tarayıcısı olan herhangi bir işletim sisteminde çalışır."
+      "answer": "Evet! BentoPDF tamamen tarayıcınızda çalıştığı için, Windows, macOS, Linux, iOS ve Android dahil modern bir web tarayıcısı olan herhangi bir işletim sisteminde çalışır."
     },
     "gdprCompliant": {
-      "question": "AEV-PDF GDPR uyumlu mu?",
-      "answer": "Evet. AEV-PDF tamamen GDPR uyumludur. Tüm dosya işlemleri tarayıcınızda yerel olarak gerçekleştiği ve dosyalarınızı herhangi bir sunucuya asla iletmediğimiz için verilerinize erişimimiz yoktur. Bu, belgeleriniz üzerindeki kontrolün her zaman sizde olduğundan emin olur."
+      "question": "BentoPDF GDPR uyumlu mu?",
+      "answer": "Evet. BentoPDF tamamen GDPR uyumludur. Tüm dosya işlemleri tarayıcınızda yerel olarak gerçekleştiği ve dosyalarınızı herhangi bir sunucuya asla iletmediğimiz için verilerinize erişimimiz yoktur. Bu, belgeleriniz üzerindeki kontrolün her zaman sizde olduğundan emin olur."
     },
     "dataStorage": {
       "question": "Dosyalarımı saklıyor veya takip ediyor musunuz?",
-      "answer": "Hayır. Dosyalarınızı asla saklamıyor, takip etmiyor veya kaydetmiyoruz. AEV-PDF'de yaptığınız her şey tarayıcı belleğinizde gerçekleşir ve sayfayı kapattığınızda silinir. Yükleme, geçmiş kaydı veya sunucu yoktur."
+      "answer": "Hayır. Dosyalarınızı asla saklamıyor, takip etmiyor veya kaydetmiyoruz. BentoPDF'de yaptığınız her şey tarayıcı belleğinizde gerçekleşir ve sayfayı kapattığınızda silinir. Yükleme, geçmiş kaydı veya sunucu yoktur."
     },
     "different": {
-      "question": "AEV-PDF'yi diğer PDF araçlarından farklı kılan nedir?",
-      "answer": "Çoğu PDF aracı, işlem için dosyalarınızı bir sunucuya yükler. AEV-PDF asla böyle yapmaz. Dosyalarınızı doğrudan tarayıcınızda işlemek için güvenli, modern web teknolojileri kullanırız. Bu, daha hızlı performans, daha güçlü gizlilik ve tam bir gönül rahatlığı anlamına gelir."
+      "question": "BentoPDF'yi diğer PDF araçlarından farklı kılan nedir?",
+      "answer": "Çoğu PDF aracı, işlem için dosyalarınızı bir sunucuya yükler. BentoPDF asla böyle yapmaz. Dosyalarınızı doğrudan tarayıcınızda işlemek için güvenli, modern web teknolojileri kullanırız. Bu, daha hızlı performans, daha güçlü gizlilik ve tam bir gönül rahatlığı anlamına gelir."
     },
     "browserBased": {
       "question": "Tarayıcı tabanlı işlem beni nasıl korur?",
-      "answer": "Tamamen tarayıcınızın içinde çalışarak, AEV-PDF dosyalarınızın cihazınızı asla terk etmemesini sağlar. Bu, sunucu saldırıları, veri ihlalleri veya yetkisiz erişim risklerini ortadan kaldırır. Dosyalarınız her zaman sizin kalır."
+      "answer": "Tamamen tarayıcınızın içinde çalışarak, BentoPDF dosyalarınızın cihazınızı asla terk etmemesini sağlar. Bu, sunucu saldırıları, veri ihlalleri veya yetkisiz erişim risklerini ortadan kaldırır. Dosyalarınız her zaman sizin kalır."
     },
     "analytics": {
       "question": "Beni takip etmek için çerez veya analiz kullanıyor musunuz?",
-      "answer": "Gizliliğinizi önemsiyoruz. AEV-PDF kişisel bilgileri takip etmez. Sadece anonim ziyaretçi sayılarını görmek için Simple Analytics kullanıyoruz. Bu, sitemizi kaç kişinin ziyaret ettiğini görebileceğimiz, ancak kim olduğunuzu asla bilemeyeceğimiz anlamına gelir. Simple Analytics tamamen GDPR uyumludur ve gizliliğinize saygı gösterir."
-    },
-    "sectionTitle": "Sıkça Sorulan Sorular"
+      "answer": "Gizliliğinizi önemsiyoruz. BentoPDF kişisel bilgileri takip etmez. Sadece anonim ziyaretçi sayılarını görmek için Simple Analytics kullanıyoruz. Bu, sitemizi kaç kişinin ziyaret ettiğini görebileceğimiz, ancak kim olduğunuzu asla bilemeyeceğimiz anlamına gelir. Simple Analytics tamamen GDPR uyumludur ve gizliliğinize saygı gösterir."
+    }
   },
   "testimonials": {
     "title": "Kullanıcılarımız",
@@ -208,11 +226,11 @@
   },
   "support": {
     "title": "Çalışmamı Beğendiniz mi?",
-    "description": "AEV-PDF, herkes için ücretsiz, özel ve güçlü bir PDF araç seti sağlamak amacıyla oluşturulmuş bir tutku projesidir. Faydalı bulduysanız, geliştirilmesini desteklemeyi düşünebilirsiniz. Her kahve yardımcı olur!",
+    "description": "BentoPDF, herkes için ücretsiz, özel ve güçlü bir PDF araç seti sağlamak amacıyla oluşturulmuş bir tutku projesidir. Faydalı bulduysanız, geliştirilmesini desteklemeyi düşünebilirsiniz. Her kahve yardımcı olur!",
     "buyMeCoffee": "Bana Kahve Ismarla"
   },
   "footer": {
-    "copyright": "© 2026 AEV-PDF. Tüm hakları saklıdır.",
+    "copyright": "© 2026 BentoPDF. Tüm hakları saklıdır.",
     "version": "Sürüm",
     "company": "Şirket",
     "aboutUs": "Hakkımızda",
@@ -252,11 +270,14 @@
     "add": "Ekle",
     "remove": "Kaldır",
     "loading": "Yükleniyor...",
+    "loadingPageCount": "Sayfalar yükleniyor...",
     "error": "Hata",
     "success": "Başarılı",
     "file": "Dosya",
     "files": "Dosya",
-    "close": "Kapat"
+    "close": "Kapat",
+    "convert": "Dönüştür",
+    "unknownError": "Bilinmeyen hata"
   },
   "about": {
     "hero": {
@@ -271,9 +292,9 @@
     "philosophy": {
       "label": "Temel Felsefemiz",
       "title": "Öncelik Her Zaman Gizlilik.",
-      "description": "Verinin bir meta olarak kabul edildiği bir çağda, farklı bir yaklaşım benimsiyoruz. AEV-PDF araçları için tüm işlemler tarayıcınızda yerel olarak gerçekleşir. Bu, dosyalarınızın sunucularımıza asla dokunmadığı, belgelerinizi asla görmediğimiz ve ne yaptığınızı takip etmediğimiz anlamına gelir. Belgeleriniz tamamen ve kesinlikle özel kalır. Bu sadece bir özellik değil, temelimizdir."
+      "description": "Verinin bir meta olarak kabul edildiği bir çağda, farklı bir yaklaşım benimsiyoruz. Bentopdf araçları için tüm işlemler tarayıcınızda yerel olarak gerçekleşir. Bu, dosyalarınızın sunucularımıza asla dokunmadığı, belgelerinizi asla görmediğimiz ve ne yaptığınızı takip etmediğimiz anlamına gelir. Belgeleriniz tamamen ve kesinlikle özel kalır. Bu sadece bir özellik değil, temelimizdir."
     },
-    "whyAEV-PDF": {
+    "whyBentopdf": {
       "title": "Neden",
       "speed": {
         "title": "Hız İçin Tasarlandı",
@@ -294,7 +315,7 @@
     },
     "cta": {
       "title": "Başlamaya hazır mısınız?",
-      "description": "Günlük belge ihtiyaçları için AEV-PDF'ye güvenen binlerce kullanıcıya katılın. Gizlilik ve performansın yaratabileceği farkı deneyimleyin.",
+      "description": "Günlük belge ihtiyaçları için BentoPDF'ye güvenen binlerce kullanıcıya katılın. Gizlilik ve performansın yaratabileceği farkı deneyimleyin.",
       "button": "Tüm Araçları Keşfet"
     }
   },
@@ -329,9 +350,12 @@
     "download": "İndir:",
     "downloadSelected": "Seçilenleri İndir",
     "exportPdf": "PDF Olarak Dışa Aktar",
-    "uploadPdfFiles": "PDF Dosyalarını Seçin",
-    "dragAndDrop": "PDF dosyalarını buraya sürükleyip bırakın veya seçmek için tıklayın",
+    "uploadPdfFiles": "PDF veya Görsel Dosyalarını Seçin",
+    "dragAndDrop": "PDF veya görsel dosyalarını buraya sürükleyip bırakın veya seçmek için tıklayın",
     "selectFiles": "Dosya Seç",
+    "dropToAdd": "Eklemek için PDF veya görsel dosyalarını bırakın",
+    "convertingImages": "Görseller PDF'e dönüştürülüyor...",
+    "failedToConvertImages": "Görseller PDF'e dönüştürülemedi.",
     "renderingPages": "Sayfalar oluşturuluyor...",
     "actions": {
       "duplicatePage": "Bu sayfayı çoğalt",
@@ -349,15 +373,6 @@
     "errorRendering": "Sayfa küçük resimleri oluşturulamadı",
     "error": "Hata",
     "failedToLoad": "Yüklenemedi"
-  },
-  "howItWorks": {
-    "title": "Nasıl Çalışır",
-    "step1": "Dosyanızı tıklayın veya sürükleyin",
-    "step2": "İşlem düğmesine tıklayın",
-    "step3": "İşlenmiş dosyanızı anında kaydedin"
-  },
-  "relatedTools": {
-    "title": "İlgili PDF Araçları"
   },
   "simpleMode": {
     "title": "PDF Araçları",
