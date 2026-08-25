@@ -1,0 +1,180 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  AEV PDF Tool -- task definition, Cloud Map registration và ECS service.
+  Đây là stack DUY NHẤT mà CodePipeline cập nhật: stage Deploy chạy CloudFormation CREATE_UPDATE
+  trên stack này với ImageTag mới. Mọi tham số khác lấy qua Fn::ImportValue từ các stack nền
+  (pdftool-ecr / -foundation / -cluster / -security-group) nên pipeline không phải truyền lại.
+
+Parameters:
+  ImageTag:
+    Type: String
+    Description: >
+      Tag trong pdftool-ecr-repo cần deploy, là git short sha (8 ký tự) do buildspec sinh ra.
+      Không có default: ECR repo đặt IMMUTABLE nên không có tag "latest" để rơi về, và một
+      default sẽ khiến thay đổi tham số không liên quan âm thầm deploy lại image cũ.
+
+  ServiceName:
+    Type: String
+    Default: pdftool
+    AllowedPattern: "[a-z][a-z0-9-]{2,30}"
+
+  EcrStackName:
+    Type: String
+    Default: pdftool-ecr
+
+  FoundationStackName:
+    Type: String
+    Default: pdftool-foundation
+
+  ClusterStackName:
+    Type: String
+    Default: pdftool-cluster
+
+  SecurityGroupStackName:
+    Type: String
+    Default: pdftool-security-group
+
+  CloudMapNamespaceId:
+    Type: String
+    Default: ns-ox4hvwgzwledegxh
+    Description: Namespace internal.aquavietnam.vn (đã có sẵn, dùng chung với adms / adms-console).
+
+  CloudMapServiceName:
+    Type: String
+    Default: pdftool
+    Description: Nhãn DNS dưới namespace, cho ra pdftool.internal.aquavietnam.vn.
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Default: "subnet-0c0cbd6ec131f44d0,subnet-0da3b3f0179bc907c"
+    Description: Private app subnet của aqua-production (app-1 / app-2), đúng subnet adms-console dùng.
+
+  TaskCpu:
+    Type: String
+    Default: '256'
+    AllowedValues: ['256', '512', '1024']
+    Description: >
+      256 (.25 vCPU) là mức tối thiểu của Fargate và đã dư cho nginx phục vụ file tĩnh -- toàn
+      bộ xử lý PDF chạy bằng WASM trên máy người dùng, server không tính toán gì.
+
+  TaskMemory:
+    Type: String
+    Default: '512'
+    AllowedValues: ['512', '1024', '2048']
+
+Resources:
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${ServiceName}-task"
+      RequiresCompatibilities: [FARGATE]
+      NetworkMode: awsvpc
+      Cpu: !Ref TaskCpu
+      Memory: !Ref TaskMemory
+      ExecutionRoleArn: !ImportValue
+        Fn::Sub: "${FoundationStackName}-ExecutionRoleArn"
+      TaskRoleArn: !ImportValue
+        Fn::Sub: "${FoundationStackName}-TaskRoleArn"
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: X86_64
+      ContainerDefinitions:
+        - Name: !Ref ServiceName
+          Image: !Sub
+            - "${Repo}:${ImageTag}"
+            - Repo: !ImportValue
+                Fn::Sub: "${EcrStackName}-RepositoryUri"
+          Essential: true
+          PortMappings:
+            - ContainerPort: 80
+              Protocol: tcp
+          # Cho phép uid 101 (user `nginx` của image nginx-unprivileged) bind cổng 80 mà không
+          # cần chạy root. Cùng cơ chế adms-console-service đang dùng. Nếu bỏ dòng này thì
+          # container khởi động rồi chết ngay với "bind() to 0.0.0.0:80 failed (13: Permission denied)".
+          SystemControls:
+            - Namespace: net.ipv4.ip_unprivileged_port_start
+              Value: '0'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !ImportValue
+                Fn::Sub: "${FoundationStackName}-LogGroupName"
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: !Ref ServiceName
+          HealthCheck:
+            # wget là applet của busybox, có sẵn trong alpine -- không cần cài thêm gì.
+            # Gọi / chứ không phải một endpoint riêng: site tĩnh, index.html tồn tại nghĩa là
+            # nginx đã đọc được document root.
+            Command:
+              - CMD-SHELL
+              - "wget -q -O /dev/null http://127.0.0.1:80/ || exit 1"
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 20
+
+  CloudMapService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: !Ref CloudMapServiceName
+      NamespaceId: !Ref CloudMapNamespaceId
+      DnsConfig:
+        DnsRecords:
+          - Type: A
+            TTL: 10
+        RoutingPolicy: MULTIVALUE
+      HealthCheckCustomConfig:
+        FailureThreshold: 1
+
+  ECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Ref ServiceName
+      Cluster: !ImportValue
+        Fn::Sub: "${ClusterStackName}-ClusterName"
+      TaskDefinition: !Ref TaskDefinition
+      # CỐ Ý KHÔNG khai báo DesiredCount.
+      # ECS CreateService mặc định desiredCount = 0 -> đúng trạng thái scale-to-zero lúc tạo;
+      # và vì thuộc tính không có trong template, CloudFormation không đụng vào nó ở các lần
+      # update sau, nên pipeline deploy image mới KHÔNG đá service đang chạy về 0 (và cũng
+      # không tự bật service đang ngủ). Hai Lambda trong pdftool-scaling.yaml là chủ sở hữu
+      # duy nhất của con số này. Đây là điểm khác adms-console-service.yaml, nơi DesiredCount
+      # là tham số và mỗi lần redeploy phải nhớ truyền đúng giá trị hiện tại.
+      CapacityProviderStrategy:
+        - CapacityProvider: FARGATE_SPOT
+          Weight: 1
+          Base: 0
+      PlatformVersion: LATEST
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets: !Ref SubnetIds
+          SecurityGroups:
+            - !ImportValue
+              Fn::Sub: "${SecurityGroupStackName}-TaskSecurityGroupId"
+          AssignPublicIp: DISABLED
+      ServiceRegistries:
+        - RegistryArn: !GetAtt CloudMapService.Arn
+      DeploymentConfiguration:
+        # MinimumHealthyPercent 0: chỉ có 1 task, chấp nhận vài chục giây gián đoạn khi deploy
+        # thay vì trả tiền cho task thứ hai chạy song song.
+        MinimumHealthyPercent: 0
+        MaximumPercent: 200
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      EnableECSManagedTags: true
+      PropagateTags: SERVICE
+
+Outputs:
+  ServiceName:
+    Value: !Ref ServiceName
+    Export:
+      Name: !Sub "${AWS::StackName}-ServiceName"
+  TaskDefinitionArn:
+    Value: !Ref TaskDefinition
+  DeployedImageTag:
+    Description: Tag đang chạy -- đối chiếu với git short sha để biết pipeline đã lên tới đâu.
+    Value: !Ref ImageTag
+  ServiceDnsName:
+    Description: Địa chỉ đưa cho người dùng.
+    Value: !Sub "http://${CloudMapServiceName}.internal.aquavietnam.vn"

@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  ECS cluster riêng cho AEV PDF Tool. Không dùng aev-prod-ecs-cluster (kafka, grafana, api,
+  adminsite, chat-service, zookeeper) vì một service scale-to-zero với Lambda tự bật/tắt
+  desiredCount không nên chia blast radius với các service chạy 24/7 của hệ thống chính.
+  100% FARGATE_SPOT: site tĩnh, mất task do Spot reclaim chỉ tốn một lần cold start.
+
+Parameters:
+  ClusterName:
+    Type: String
+    Default: pdftool-cluster
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9-]{0,254}"
+
+Resources:
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref ClusterName
+      CapacityProviders: [FARGATE, FARGATE_SPOT]
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE_SPOT
+          Weight: 1
+          Base: 0
+      ClusterSettings:
+        - Name: containerInsights
+          Value: disabled
+      Tags:
+        - Key: Name
+          Value: !Ref ClusterName
+        - Key: Environment
+          Value: Prod
+
+Outputs:
+  ClusterName:
+    Value: !Ref Cluster
+    Export:
+      Name: !Sub "${AWS::StackName}-ClusterName"
+  ClusterArn:
+    Value: !GetAtt Cluster.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ClusterArn"

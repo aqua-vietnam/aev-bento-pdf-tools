@@ -1,0 +1,82 @@
+version: 0.2
+
+# Buildspec cho CodeBuild project pdftool-build (do pdftool-pipeline.yaml tạo ra).
+#
+# Hai lần docker build, không phải một:
+#   1. Dockerfile ở gốc repo -> image AEV PDF đầy đủ, nginx nghe 8080 (y hệt bản đang chạy
+#      trên Dokploy, để hành vi không lệch nhau).
+#   2. deploy/aws/Dockerfile.port80 -> lớp mỏng chỉ đổi cổng sang 80, cho URL nội bộ sạch.
+# Lần thứ hai gần như tức thời (chỉ một lệnh sed) và context là thư mục deploy/aws nên
+# không phải gửi lại toàn bộ repo cho Docker daemon.
+#
+# Build args lấy nguyên từ docker-compose.yml để bản trên ECS và bản trên Dokploy cùng
+# branding. Khác duy nhất là SITE_URL trỏ về tên miền nội bộ, để canonical/sitemap không
+# đẩy tín hiệu SEO của trang nội bộ về site public.
+
+env:
+  variables:
+    IMAGE_REPO_NAME: pdftool-ecr-repo
+    SITE_URL: http://pdftool.internal.aquavietnam.vn
+    VITE_BRAND_NAME: AEV PDF
+    VITE_BRAND_LOGO: images/aqua-logo.png
+    VITE_FOOTER_TEXT: "© 2026 AEV PDF. All rights reserved."
+
+phases:
+  pre_build:
+    commands:
+      # Dockerfile gốc dùng RUN --mount=type=secret -> bắt buộc BuildKit.
+      - export DOCKER_BUILDKIT=1
+      - export ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+      - export IMAGE_TAG="${CODEBUILD_RESOLVED_SOURCE_VERSION:0:8}"
+      - echo "Commit $CODEBUILD_RESOLVED_SOURCE_VERSION -> image tag $IMAGE_TAG"
+      # ECR repo đặt IMMUTABLE: push đè cùng tag sẽ lỗi. Chạy lại pipeline trên đúng commit cũ
+      # là chuyện bình thường (retry sau khi stage Deploy hỏng), nên bỏ qua build ở trường hợp đó
+      # và đi thẳng tới bước deploy lại image đã có.
+      - |
+        if aws ecr describe-images --repository-name "$IMAGE_REPO_NAME" --image-ids imageTag="$IMAGE_TAG" >/dev/null 2>&1; then
+          echo "Tag $IMAGE_TAG da co trong ECR -- bo qua build, chi deploy lai."
+          export SKIP_BUILD=1
+        else
+          export SKIP_BUILD=
+        fi
+
+  build:
+    commands:
+      - |
+        if [ -n "$SKIP_BUILD" ]; then
+          echo "SKIP_BUILD=1, khong build lai."
+          exit 0
+        fi
+      - echo "=== Build image AEV PDF (nginx 8080) ==="
+      - |
+        docker build -f Dockerfile -t "pdftool-base:$IMAGE_TAG" \
+          --build-arg SIMPLE_MODE=false \
+          --build-arg SITE_URL="$SITE_URL" \
+          --build-arg VITE_BRAND_NAME="$VITE_BRAND_NAME" \
+          --build-arg VITE_BRAND_LOGO="$VITE_BRAND_LOGO" \
+          --build-arg VITE_FOOTER_TEXT="$VITE_FOOTER_TEXT" \
+          .
+      - echo "=== Lop port 80 ==="
+      - |
+        docker build -f deploy/aws/Dockerfile.port80 \
+          --build-arg BASE_IMAGE="pdftool-base:$IMAGE_TAG" \
+          -t "$ECR_REGISTRY/$IMAGE_REPO_NAME:$IMAGE_TAG" \
+          deploy/aws
+
+  post_build:
+    commands:
+      - |
+        if [ -z "$SKIP_BUILD" ]; then
+          echo "=== Push ECR ==="
+          docker push "$ECR_REGISTRY/$IMAGE_REPO_NAME:$IMAGE_TAG"
+        fi
+      # File này là cầu nối sang stage Deploy: action CloudFormation đọc ImageTag ra khỏi đây
+      # bằng Fn::GetParam rồi truyền vào pdftool-service.yaml.
+      - printf '{"ImageTag":"%s"}\n' "$IMAGE_TAG" > build.json
+      - cat build.json
+
+artifacts:
+  files:
+    - build.json
+    - deploy/aws/pdftool-service.yaml

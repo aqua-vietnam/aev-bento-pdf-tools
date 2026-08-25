@@ -1,0 +1,353 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CI/CD cho AEV PDF Tool: push lên nhánh aev-custom của aqua-vietnam/aev-bento-pdf-tools
+  -> CodeBuild dựng image, đẩy ECR -> CodePipeline chạy CloudFormation cập nhật stack
+  pdftool-service với tag image mới.
+
+# ============================================================================
+# Vì sao là pipeline RIÊNG chứ không thêm stage vào aev-prod-pipeline: pipeline đó có Source
+# trỏ vào repo khác (aqv-ew/AQVEW, nhánh prod) và deploy vào aev-prod-vpc. Một CodePipeline chỉ
+# có một Source; không có cách nào để nó theo dõi thêm repo này.
+#
+# Vì sao stage Deploy là CloudFormation chứ không phải action ECS như jira-gateway-pipeline:
+# ECR repo đặt IMMUTABLE nên không có tag "latest", và task definition do CloudFormation quản
+# lý. Nếu để CodePipeline tự đăng ký revision task definition ngoài CloudFormation thì lần nào
+# ai đó cập nhật stack pdftool-service (đổi CPU, đổi subnet...) service cũng tụt về image cũ
+# ghi trong tham số stack. Cho CloudFormation làm chủ luôn cả image thì không có drift đó.
+# ============================================================================
+
+Parameters:
+  GitHubOwner:
+    Type: String
+    Default: aqua-vietnam
+
+  GitHubRepo:
+    Type: String
+    Default: aev-bento-pdf-tools
+
+  GitHubBranch:
+    Type: String
+    Default: aev-custom
+    Description: >
+      Nhánh custom của AEV. main là bản mirror upstream BentoPDF, không chứa branding AEV --
+      deploy từ main sẽ ra một site BentoPDF gốc.
+
+  GitHubConnectionArn:
+    Type: String
+    Default: arn:aws:codeconnections:ap-southeast-1:474082330515:connection/59427c0a-fa99-4977-8152-8b8a1aa99513
+    Description: >
+      Connection "aquavn-github" đã có sẵn và đang AVAILABLE, hiện dùng cho
+      aqua-vietnam/demo-repository -- cùng GitHub org nên không phải tạo connection mới.
+
+  ServiceStackName:
+    Type: String
+    Default: pdftool-service
+    Description: Stack mà stage Deploy tạo/cập nhật. Template nằm trong chính artifact build.
+
+  EcrStackName:
+    Type: String
+    Default: pdftool-ecr
+
+  BuildComputeType:
+    Type: String
+    Default: BUILD_GENERAL1_MEDIUM
+    AllowedValues: [BUILD_GENERAL1_SMALL, BUILD_GENERAL1_MEDIUM, BUILD_GENERAL1_LARGE]
+    Description: >
+      MEDIUM (7 GB RAM), không phải SMALL: npm run build:with-docs chạy vite build + sinh trang
+      i18n cho ~20 ngôn ngữ + build VitePress, với NODE_OPTIONS=--max-old-space-size=3072 ghi sẵn
+      trong Dockerfile. SMALL chỉ có 3 GB, gần như chắc chắn OOM. Nâng lên LARGE nếu build vẫn
+      hết bộ nhớ.
+
+Resources:
+  # ==========================================================================
+  # Artifact store
+  # ==========================================================================
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "codepipeline-${AWS::Region}-${AWS::AccountId}-pdftool"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldArtifacts
+            Status: Enabled
+            ExpirationInDays: 30
+
+  # ==========================================================================
+  # CodeBuild
+  # ==========================================================================
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: pdftool-codebuild-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: codebuild.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: build-and-push
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/pdftool-build"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/pdftool-build:*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                Resource: !Sub "${ArtifactBucket.Arn}/*"
+              # GetAuthorizationToken không nhận resource cụ thể, bắt buộc "*".
+              - Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:CompleteLayerUpload
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:UploadLayerPart
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                  # describe-images: buildspec dùng để phát hiện tag đã tồn tại (repo IMMUTABLE).
+                  - ecr:DescribeImages
+                Resource: !ImportValue
+                  Fn::Sub: "${EcrStackName}-RepositoryArn"
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: pdftool-build
+      Description: Dung image AEV PDF Tool va day len ECR.
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: !Ref BuildComputeType
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: IMAGE_REPO_NAME
+            Value: !ImportValue
+              Fn::Sub: "${EcrStackName}-RepositoryName"
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: deploy/aws/buildspec.yml
+      # npm ci + vite build + docs + 20 bản i18n: quan sát thực tế khoảng 12-20 phút.
+      TimeoutInMinutes: 45
+      Cache:
+        Type: LOCAL
+        Modes: [LOCAL_DOCKER_LAYER_CACHE, LOCAL_SOURCE_CACHE]
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: /aws/codebuild/pdftool-build
+      Tags:
+        - Key: Project
+          Value: AevPdfTool
+        - Key: Environment
+          Value: Prod
+
+  # ==========================================================================
+  # Role mà CloudFormation dùng ở stage Deploy
+  # ==========================================================================
+  CfnDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: pdftool-cfn-deploy-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: cloudformation.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: manage-pdftool-service
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # ECS và Cloud Map: phần lớn API của hai service này không hỗ trợ resource-level
+              # permission (RegisterTaskDefinition, CreateService trên cluster mới...), nên
+              # phạm vi được giữ ở mức service thay vì từng ARN.
+              - Effect: Allow
+                Action:
+                  - ecs:*
+                  - servicediscovery:*
+                Resource: '*'
+              # Chỉ cho phép trao đúng hai role của pdftool cho ECS, không phải mọi role.
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource:
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/pdftool-execution-role"
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/pdftool-task-role"
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: ecs-tasks.amazonaws.com
+              # CloudFormation cần đọc VPC/subnet/SG để kiểm tra tham số kiểu AWS::EC2::*::Id.
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeSecurityGroups
+                  - ec2:DescribeVpcs
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - logs:DescribeLogGroups
+                Resource: '*'
+
+  # ==========================================================================
+  # CodePipeline
+  # ==========================================================================
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: pdftool-codepipeline-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: codepipeline.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: run-pipeline
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                  - s3:GetBucketVersioning
+                Resource:
+                  - !GetAtt ArtifactBucket.Arn
+                  - !Sub "${ArtifactBucket.Arn}/*"
+              - Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                Resource: !GetAtt CodeBuildProject.Arn
+              - Effect: Allow
+                Action: codestar-connections:UseConnection
+                Resource: !Ref GitHubConnectionArn
+              - Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:SetStackPolicy
+                  - cloudformation:ValidateTemplate
+                Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${ServiceStackName}/*"
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt CfnDeployRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: cloudformation.amazonaws.com
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: pdftool-pipeline
+      RoleArn: !GetAtt CodePipelineServiceRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: GitHub_Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: '1'
+              Configuration:
+                ConnectionArn: !Ref GitHubConnectionArn
+                FullRepositoryId: !Sub "${GitHubOwner}/${GitHubRepo}"
+                BranchName: !Ref GitHubBranch
+                OutputArtifactFormat: CODE_ZIP
+                DetectChanges: true
+              OutputArtifacts:
+                - Name: SourceOutput
+              RunOrder: 1
+
+        - Name: Build
+          Actions:
+            - Name: Build_Image
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+
+        - Name: Deploy
+          Actions:
+            - Name: Update_Service_Stack
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                StackName: !Ref ServiceStackName
+                TemplatePath: BuildOutput::deploy/aws/pdftool-service.yaml
+                RoleArn: !GetAtt CfnDeployRole.Arn
+                # ImageTag là tham số DUY NHẤT truyền vào; mọi tham số khác lấy default trong
+                # template hoặc Fn::ImportValue từ các stack nền.
+                ParameterOverrides: '{"ImageTag": {"Fn::GetParam": ["BuildOutput", "build.json", "ImageTag"]}}'
+              InputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+
+      Tags:
+        - Key: Project
+          Value: AevPdfTool
+        - Key: Environment
+          Value: Prod
+
+Outputs:
+  PipelineUrl:
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/codesuite/codepipeline/pipelines/${Pipeline}/view"
+  PipelineName:
+    Value: !Ref Pipeline
+  CodeBuildProjectName:
+    Value: !Ref CodeBuildProject
+  ArtifactBucketName:
+    Value: !Ref ArtifactBucket

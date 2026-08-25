@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:1
+#
+# Lớp mỏng chồng lên image chính (Dockerfile ở gốc repo) để nginx nghe cổng 80
+# thay vì 8080, cho URL nội bộ sạch: http://pdftool.internal.aquavietnam.vn
+#
+# Vì sao KHÔNG sửa thẳng nginx.conf ở gốc repo: nginx.conf là file của upstream
+# (alam00000/bentopdf). Mỗi lần sync upstream theo quy trình aev-upgrade, một
+# thay đổi nằm trong file đó là một xung đột merge phải xử lý tay. File này là
+# file mới hoàn toàn của AEV nên không bao giờ xung đột.
+#
+# Vì sao KHÔNG cần chạy root: task definition đặt sysctl
+# net.ipv4.ip_unprivileged_port_start = 0, nên uid 101 (user `nginx`) bind được
+# cổng 80. Cùng cách adms-console đang làm. Giữ non-root nghĩa là image vẫn
+# khớp posture bảo mật của upstream (nginx-unprivileged).
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+# nginx.conf được COPY --chown=nginx:nginx ở Dockerfile gốc nên user nginx sửa được.
+RUN sed -i 's/listen 8080;/listen 80;/; s/listen \[::\]:8080;/listen [::]:80;/' /etc/nginx/nginx.conf \
+    && grep -q 'listen 80;' /etc/nginx/nginx.conf
+
+# PORT chỉ để nginx-ipv6.sh và các script trong /docker-entrypoint.d đọc đúng cổng.
+ENV PORT=80
+EXPOSE 80

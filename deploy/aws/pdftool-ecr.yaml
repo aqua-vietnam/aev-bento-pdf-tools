@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  ECR repository cho image AEV PDF Tool (fork BentoPDF). Repo riêng, không dùng chung với
+  aev-prod-ecr-* : những repo đó thuộc vòng đời của aev-prod-pipeline (AquaEW), deploy theo
+  nhịp khác hẳn, và lifecycle policy "giữ 10 image gần nhất" sẽ bị trộn lịch sử nếu dùng chung.
+
+Resources:
+  Repository:
+    Type: AWS::ECR::Repository
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RepositoryName: !Sub "${AWS::StackName}-repo"
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      # IMMUTABLE giống adms-console-ecr: tag là git short sha, không bao giờ ghi đè.
+      # Hệ quả: KHÔNG có tag "latest" trong repo này -- buildspec vì thế phải bỏ qua
+      # push nếu tag đã tồn tại (chạy lại pipeline trên cùng một commit).
+      ImageTagMutability: IMMUTABLE
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Giu 10 image gan nhat. Rollback xa hon 10 ban build thi build lai tu git.",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": { "type": "expire" }
+              }
+            ]
+          }
+
+Outputs:
+  RepositoryUri:
+    Value: !GetAtt Repository.RepositoryUri
+    Export:
+      Name: !Sub "${AWS::StackName}-RepositoryUri"
+  RepositoryArn:
+    Value: !GetAtt Repository.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-RepositoryArn"
+  RepositoryName:
+    Value: !Ref Repository
+    Export:
+      Name: !Sub "${AWS::StackName}-RepositoryName"
