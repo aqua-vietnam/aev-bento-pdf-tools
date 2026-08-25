@@ -1,15 +1,35 @@
 services:
+  # Tên service giữ nguyên 'bentopdf': Dokploy tham chiếu service name trong
+  # cấu hình Domain. Đổi tên ở đây sẽ làm hỏng routing Traefik đã cấu hình.
   bentopdf:
-    # GitHub Container Registry (Recommended)
-    # Self-Hosted build - ghcr.io/alam00000/bentopdf-simple:latest
-    # Commercial build  - ghcr.io/alam00000/bentopdf:latest
-    # Docker Hub (Alternative)
-    # Self-Hosted build - bentopdfteam/bentopdf-simple:latest
-    # Commercial build  - bentopdfteam/bentopdf:latest
-    image: ghcr.io/alam00000/bentopdf-simple:latest
+    # Build từ source của fork này (AEV PDF).
+    # KHÔNG dùng image dựng sẵn của upstream (ghcr.io/alam00000/bentopdf-simple)
+    # vì đó là BentoPDF gốc, không chứa branding/UI custom của AEV.
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # false = giữ full site (navbar, hero, features, FAQ, footer).
+        # true sẽ ẩn đúng những phần AEV đã custom (logo aqua, footer, nav).
+        SIMPLE_MODE: false
+
+        # Build-time. Quyết định canonical + hreflang + sitemap.
+        # Bỏ trống sẽ lấy default của Dockerfile là https://www.bentopdf.com
+        # -> đẩy tín hiệu SEO về site upstream.
+        SITE_URL: https://pdf-tools.aquavietnam.com.vn
+
+        # Build-time (VITE_* được bake vào bundle, không đọc lúc runtime).
+        # Thiếu VITE_BRAND_LOGO thì logo fallback về favicon-no-bg.svg của BentoPDF.
+        VITE_BRAND_NAME: AEV PDF
+        VITE_BRAND_LOGO: images/aqua-logo.png
+        VITE_FOOTER_TEXT: © 2026 AEV PDF. All rights reserved.
     container_name: bentopdf
     restart: unless-stopped
     ports:
+      # host:container. nginx trong container luôn nghe 8080.
+      # Khối này chỉ cần khi muốn vào trực tiếp http://<ip-vps>:5557.
+      # Nếu chỉ dùng domain qua Traefik của Dokploy thì có thể bỏ khối 'ports'
+      # và set Container Port = 8080 trong tab Domains của Dokploy.
       - '5557:8080'
     # For IPv4-only environments
     #environment:
