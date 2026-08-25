@@ -29,7 +29,13 @@ Branding được áp theo 3 cơ chế:
 
 ## 2. Quy trình nâng cấp (chuẩn)
 
+> **Dùng đúng Node 22.14.0** (`.nvmrc`). Node mới hơn sẽ làm test fail giả — xem mục 7.
+
 ```bash
+# 0. Chốt Node version TRƯỚC khi làm gì khác
+nvm use                                 # đọc .nvmrc -> 22.14.0
+node -v                                 # phải in v22.14.0
+
 # 1. Lấy code mới từ upstream
 git fetch upstream
 git checkout aev-custom
@@ -37,17 +43,32 @@ git merge upstream/main        # hoặc: git merge origin/main
 
 # 2. Resolve conflict (xem mục 3). Với các trang src/pages/*.html chỉ khác branding:
 #    git checkout --theirs -- <file>   (lấy bản upstream, script sẽ brand lại)
+#    Nhớ: git add <file> sau khi resolve.
 
 # 3. Chuẩn hóa branding (idempotent, an toàn chạy lại nhiều lần)
 node scripts/apply-branding.mjs        # hoặc --dry-run để xem trước
 
-# 4. Verify
+# 4. Script sửa file trong working tree, KHÔNG tự stage.
+#    Bỏ bước này = commit thiếu branding (xem mục 7).
+git add -u
+
+# 5. Script thay chuỗi làm lệch line-wrap -> phải format lại, nếu không
+#    pre-commit hook (lint-staged) sẽ sửa file giữa lúc commit.
+#    Loại 3 file dirty sẵn ở upstream ra (xem mục 7.2).
+git diff --cached --name-only \
+  | grep -E '\.(html|json|css|md|ts|js|mjs|cjs)$' \
+  | grep -vxE 'README\.md|signatures/cla\.json|src/js/logic/scan-to-pdf\.ts' \
+  | tr '\n' '\0' | xargs -0 npx prettier --write
+git add -u
+
+# 6. Verify
 npm ci
 cp .env.example .env.production         # đảm bảo SITE_URL đúng
 npm run build                           # phải PASS, SEO audit clean
 npm run test:run                        # phải PASS
 
-# 5. Commit & push
+# 7. Commit & push (KHÔNG dùng --no-verify)
+git commit
 git push origin aev-custom
 ```
 
@@ -85,9 +106,47 @@ mà không đụng `@bentopdf` (npm, chữ thường). Danh sách bảo vệ: `b
 
 ## 6. Checklist verify trước khi push
 
+- [ ] `node -v` = `v22.14.0`
 - [ ] `npm run build` PASS, log "SEO audit: ... passed, sitemap clean"
 - [ ] Sitemap/canonical hiện `pdf-tools.aquavietnam.com.vn` (không `bentopdf.com`)
 - [ ] `npm run test:run` PASS
 - [ ] `git grep -nE "AEV-PDF\.com|@AEV-PDF/|AEV-PDF\.workers"` → rỗng
 - [ ] `git grep -n "cdn.jsdelivr.net/npm/@bentopdf"` → còn (WASM không vỡ)
 - [ ] `node scripts/apply-branding.mjs` báo "0 file đổi" (idempotent)
+- [ ] `git diff HEAD` → rỗng (commit khớp working tree, không sót thay đổi chưa stage)
+- [ ] `git grep -n "BentoPDF" -- '*.html' 'public/locales/**' 'src/js/**'` → rỗng
+- [ ] `git diff origin/aev-custom HEAD --stat -- src/partials/ src/css/styles.css .env.example`
+      → rỗng (UI custom không bị merge đụng)
+
+Verify deploy thật (khuyến nghị, bắt được lỗi build-arg mà `npm run build` không bắt):
+
+```bash
+docker compose build && docker compose up -d
+curl -s localhost:5557/ | grep -c 'BentoPDF'        # phải là 0
+curl -s localhost:5557/ | grep -o '<link rel="canonical"[^>]*>'
+docker compose down
+```
+
+## 7. Ba cái bẫy đã mắc (đọc trước khi làm)
+
+**7.1. `apply-branding.mjs` không tự `git add`.** Script sửa working tree. Nếu merge
+xong bạn `git add` các file conflict rồi mới chạy script, thì thay đổi branding trên
+**mọi** file (kể cả file tự auto-merge như `about.html`) sẽ nằm ngoài index. `git commit`
+lúc đó tạo commit **vẫn còn chữ "BentoPDF"** dù working tree đã đúng, và `npm run build`
+chạy trên working tree nên vẫn PASS — không có gì báo lỗi. Luôn `git add -u` sau script,
+và check `git diff HEAD` phải rỗng.
+
+**7.2. `apply-branding.mjs` làm lệch prettier.** Đổi `BentoPDF` → `AEV PDF` thay đổi độ
+dài dòng nên prettier muốn wrap lại (~89 file). Bỏ qua thì pre-commit hook `lint-staged`
+sẽ sửa file ngay giữa lúc commit. **Đừng** format 3 file đang dirty sẵn ở upstream —
+`README.md`, `signatures/cla.json`, `src/js/logic/scan-to-pdf.ts` — format chúng tạo
+divergence gây conflict ở mọi lần merge sau. Kiểm tra bằng cách chạy `prettier --check`
+trên cây `origin/main` trước khi quyết định.
+
+**7.3. Node mới hơn 22.14.0 làm 12 test fail giả.** Từ Node 24+ có global `localStorage`
+che mất `localStorage` của jsdom, gây `TypeError: Cannot read properties of undefined
+(reading 'clear')` ở `src/tests/i18n.test.ts` và `src/tests/xss-replay.test.ts`. Không
+phải lỗi merge. `nvm use` trước khi test. (`Dockerfile` builder dùng `node:20-alpine`
+trong khi `package.json` engines yêu cầu `>=22.12.0` — chỉ là warning `EBADENGINE` vì
+không có `.npmrc`/`engine-strict`, build vẫn PASS. Không sửa `Dockerfile` vì nó thuộc
+upstream.)
