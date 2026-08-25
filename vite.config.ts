@@ -7,12 +7,25 @@ import type { Connect, Plugin } from 'vite';
 // import basicSsl from '@vitejs/plugin-basic-ssl';
 import tailwindcss from '@tailwindcss/vite';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
-import { viteStaticCopy } from 'vite-plugin-static-copy';
 import viteCompression from 'vite-plugin-compression';
 import handlebars from 'vite-plugin-handlebars';
 import { resolve } from 'path';
 import fs from 'fs';
 import { constants as zlibConstants } from 'zlib';
+import { createHash } from 'crypto';
+
+function engineVersion(): string {
+  try {
+    const dir = resolve(__dirname, 'node_modules/bentopdf-pdfium');
+    const h = createHash('sha256');
+    for (const f of ['editcore.js', 'editcore.wasm']) {
+      h.update(fs.readFileSync(resolve(dir, f)));
+    }
+    return h.digest('hex').slice(0, 12);
+  } catch {
+    return 'dev';
+  }
+}
 
 const SUPPORTED_LANGUAGES = [
   'en',
@@ -407,6 +420,56 @@ function flattenPagesPlugin(): Plugin {
   };
 }
 
+function swPrecachePlugin(): Plugin {
+  const workerAssetPattern = /^assets\/pdf\.worker(\.min)?-[\w-]+\.m?js$/;
+  const placeholderPattern = /const PRECACHE_ASSETS = \[[\s\S]*?\];/;
+
+  return {
+    name: 'sw-precache',
+    apply: 'build',
+    enforce: 'post',
+    writeBundle(options, bundle) {
+      const outDir = options.dir;
+      if (!outDir) return;
+
+      const workerAssets = Object.keys(bundle)
+        .filter((fileName) => workerAssetPattern.test(fileName))
+        .sort();
+
+      if (workerAssets.length === 0) {
+        throw new Error(
+          '[sw-precache] no PDF.js worker asset found in bundle — service worker would precache nothing'
+        );
+      }
+
+      const swPath = resolve(outDir, 'sw.js');
+      if (!fs.existsSync(swPath)) {
+        throw new Error(`[sw-precache] ${swPath} not found in build output`);
+      }
+
+      const source = fs.readFileSync(swPath, 'utf8');
+      if (!placeholderPattern.test(source)) {
+        throw new Error(
+          '[sw-precache] could not find "const PRECACHE_ASSETS = [...]" in sw.js'
+        );
+      }
+
+      const list = workerAssets.map((asset) => `  '${asset}',`).join('\n');
+      fs.writeFileSync(
+        swPath,
+        source.replace(
+          placeholderPattern,
+          `const PRECACHE_ASSETS = [\n${list}\n];`
+        )
+      );
+
+      console.log(
+        `[sw-precache] precaching ${workerAssets.length} asset(s): ${workerAssets.join(', ')}`
+      );
+    },
+  };
+}
+
 function rewriteHtmlPathsPlugin(): Plugin {
   const baseUrl = process.env.BASE_URL || '/';
   const normalizedBase = baseUrl.replace(/\/?$/, '/');
@@ -464,15 +527,11 @@ export default defineConfig(({ mode }) => {
     console.log('[Vite] Using local WASM files only');
   }
 
-  const staticCopyTargets = [
-    {
-      src: 'node_modules/embedpdf-snippet/dist/pdfium.wasm',
-      dest: 'embedpdf',
-    },
-  ];
-
   return {
     base: (process.env.BASE_URL || '/').replace(/\/?$/, '/'),
+    worker: {
+      format: 'es' as const,
+    },
     plugins: [
       // basicSsl(),
       handlebars({
@@ -489,6 +548,7 @@ export default defineConfig(({ mode }) => {
       languageRouterPlugin(),
       flattenPagesPlugin(),
       rewriteHtmlPathsPlugin(),
+      swPrecachePlugin(),
       tailwindcss(),
       nodePolyfills({
         include: ['buffer', 'stream', 'util', 'zlib', 'process'],
@@ -498,17 +558,16 @@ export default defineConfig(({ mode }) => {
           process: true,
         },
       }),
-      viteStaticCopy({
-        targets: staticCopyTargets,
-      }),
       viteCompression({
         algorithm: 'brotliCompress',
         ext: '.br',
         threshold: 1024,
+        filter: /\.(js|mjs|json|css|html|wasm|svg)$/i,
         compressionOptions: {
           params: {
             [zlibConstants.BROTLI_PARAM_QUALITY]: 11,
-            [zlibConstants.BROTLI_PARAM_MODE]: zlibConstants.BROTLI_MODE_TEXT,
+            [zlibConstants.BROTLI_PARAM_MODE]:
+              zlibConstants.BROTLI_MODE_GENERIC,
           },
         },
         deleteOriginFile: false,
@@ -517,6 +576,7 @@ export default defineConfig(({ mode }) => {
         algorithm: 'gzip',
         ext: '.gz',
         threshold: 1024,
+        filter: /\.(js|mjs|json|css|html|wasm|svg)$/i,
         compressionOptions: {
           level: 9,
         },
@@ -525,6 +585,9 @@ export default defineConfig(({ mode }) => {
     ],
     define: {
       __SIMPLE_MODE__: JSON.stringify(process.env.SIMPLE_MODE === 'true'),
+      __DISABLE_GITHUB_STARS__: JSON.stringify(
+        process.env.DISABLE_GITHUB_STARS === 'true'
+      ),
       __BRAND_NAME__: JSON.stringify(process.env.VITE_BRAND_NAME || ''),
       __DISABLED_TOOLS__: JSON.stringify(
         (process.env.DISABLE_TOOLS || '')
@@ -532,6 +595,7 @@ export default defineConfig(({ mode }) => {
           .map((s) => s.trim())
           .filter(Boolean)
       ),
+      __ENGINE_VERSION__: JSON.stringify(engineVersion()),
     },
     resolve: {
       alias: {
@@ -543,11 +607,14 @@ export default defineConfig(({ mode }) => {
     },
     optimizeDeps: {
       include: ['pdfkit', 'blob-stream'],
-      exclude: ['coherentpdf', 'wasm-vips'],
+      exclude: ['coherentpdf', 'wasm-vips', 'bentopdf-pdfium'],
     },
     server: {
       host: process.env.VITE_DEV_HOST || 'localhost',
       port: 5557,
+      watch: {
+        ignored: ['!**/node_modules/bentopdf-pdfium/**'],
+      },
       headers: {
         'Cross-Origin-Opener-Policy': 'same-origin',
         'Cross-Origin-Embedder-Policy': 'require-corp',
@@ -595,6 +662,7 @@ export default defineConfig(({ mode }) => {
           'split-pdf': resolve(__dirname, 'src/pages/split-pdf.html'),
           'compress-pdf': resolve(__dirname, 'src/pages/compress-pdf.html'),
           'edit-pdf': resolve(__dirname, 'src/pages/edit-pdf.html'),
+          'edit-pdf-text': resolve(__dirname, 'src/pages/edit-pdf-text.html'),
           'jpg-to-pdf': resolve(__dirname, 'src/pages/jpg-to-pdf.html'),
           'sign-pdf': resolve(__dirname, 'src/pages/sign-pdf.html'),
           'crop-pdf': resolve(__dirname, 'src/pages/crop-pdf.html'),
@@ -648,6 +716,7 @@ export default defineConfig(({ mode }) => {
             __dirname,
             'src/pages/alternate-merge.html'
           ),
+          'duplex-collate': resolve(__dirname, 'src/pages/duplex-collate.html'),
           'compare-pdfs': resolve(__dirname, 'src/pages/compare-pdfs.html'),
           'add-attachments': resolve(
             __dirname,

@@ -13,13 +13,11 @@
  */
 
 const ALLOWED_PATH_PATTERNS = [
-  /\.crt$/i,
-  /\.cer$/i,
-  /\.pem$/i,
-  /\/certs\//i,
-  /\/ocsp/i,
-  /\/crl/i,
-  /caIssuers/i,
+  /\.(crt|cer|pem|der|p7c|p7b)$/i,
+  /(^|\/)certs(\/|$)/i,
+  /(^|\/)ocsp(\/|$)/i,
+  /(^|\/)crl(\/|$)/i,
+  /(^|\/)caissuers(\/|$)/i,
 ];
 
 const ALLOWED_TSA_HOSTS = new Set([
@@ -48,6 +46,8 @@ const RATE_LIMIT_MAX_REQUESTS = 60;
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+let warnedNoProxySecret = false;
 
 async function verifySignature(message, signature, secret) {
   try {
@@ -123,6 +123,31 @@ function isPrivateOrReservedHost(hostname) {
   return false;
 }
 
+async function hostnameResolvesToPrivate(hostname) {
+  const clean = hostname.replace(/^\[|\]$/g, '');
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(clean) || clean.includes(':')) {
+    return isPrivateOrReservedHost(clean);
+  }
+  const ips = [];
+  for (const type of ['A', 'AAAA']) {
+    try {
+      const res = await fetch(
+        `https://1.1.1.1/dns-query?name=${encodeURIComponent(clean)}&type=${type}`,
+        { headers: { accept: 'application/dns-json' } }
+      );
+      if (!res.ok) return true;
+      const data = await res.json();
+      for (const ans of data.Answer || []) {
+        if (ans && ans.data) ips.push(String(ans.data).replace(/\.$/, ''));
+      }
+    } catch {
+      return true;
+    }
+  }
+  if (ips.length === 0) return true;
+  return ips.some((ip) => isPrivateOrReservedHost(ip));
+}
+
 function isValidCertificateUrl(urlString) {
   try {
     const url = new URL(urlString);
@@ -181,7 +206,7 @@ function handleOptions(request) {
 }
 
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request, env) {
     const url = new URL(request.url);
     const origin = request.headers.get('Origin');
 
@@ -190,6 +215,10 @@ export default {
     }
 
     // NOTE: If you are selfhosting this proxy, you can remove this check, or can set it to only accept requests from your own domain
+    // SECURITY: The Origin allow-list and the optional PROXY_SECRET HMAC are anti-abuse controls, NOT a security boundary — the Origin
+    // header is forgeable by non-browser clients and the HMAC secret ships in the public client bundle. The real SSRF defense is the
+    // private/reserved-IP resolution check (hostnameResolvesToPrivate). Deployments running this off Cloudflare cannot fully close the
+    // DNS-rebinding gap in code and MUST add network egress filtering (see docs/self-hosting/cors-proxy.md).
     if (!isAllowedOrigin(origin)) {
       return new Response(
         JSON.stringify({
@@ -293,7 +322,8 @@ export default {
       const now = Date.now();
       if (
         isNaN(requestTime) ||
-        Math.abs(now - requestTime) > MAX_TIMESTAMP_AGE_MS
+        requestTime > now + 60000 ||
+        now - requestTime > MAX_TIMESTAMP_AGE_MS
       ) {
         return new Response(
           JSON.stringify({
@@ -332,6 +362,13 @@ export default {
           }
         );
       }
+    } else if (!warnedNoProxySecret) {
+      warnedNoProxySecret = true;
+      console.warn(
+        '[CORS Proxy] PROXY_SECRET is not set — request signatures are not verified, so the proxy is callable by any client that can ' +
+          'send an allowed Origin header. Set PROXY_SECRET to deter casual abuse (note: it ships in the public client bundle, so it is ' +
+          'not a real authentication boundary), and add network egress filtering if running off Cloudflare.'
+      );
     }
 
     const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown';
@@ -384,9 +421,33 @@ export default {
       );
     }
 
+    let targetHostname;
+    try {
+      targetHostname = new URL(targetUrl).hostname;
+    } catch {
+      targetHostname = '';
+    }
+    if (!targetHostname || (await hostnameResolvesToPrivate(targetHostname))) {
+      return new Response(
+        JSON.stringify({
+          error: 'Forbidden destination',
+          message: 'The requested host is not permitted',
+        }),
+        {
+          status: 403,
+          headers: {
+            ...corsHeaders(origin),
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+
     try {
       const upstreamInit = {
         method: request.method,
+        redirect: 'manual',
+        signal: AbortSignal.timeout(10000),
         headers: {
           'User-Agent': 'BentoPDF-CertProxy/1.0',
         },
@@ -398,6 +459,22 @@ export default {
       }
 
       const response = await fetch(targetUrl, upstreamInit);
+
+      if (response.status >= 300 && response.status < 400) {
+        return new Response(
+          JSON.stringify({
+            error: 'Redirect blocked',
+            message: 'Upstream redirects are not allowed',
+          }),
+          {
+            status: 502,
+            headers: {
+              ...corsHeaders(origin),
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+      }
 
       if (!response.ok) {
         return new Response(
@@ -480,7 +557,7 @@ export default {
             response.headers.get('Content-Type')
           ),
           'Content-Length': totalSize.toString(),
-          'Cache-Control': 'public, max-age=86400',
+          'Cache-Control': 'no-store',
           'X-Content-Type-Options': 'nosniff',
         },
       });
