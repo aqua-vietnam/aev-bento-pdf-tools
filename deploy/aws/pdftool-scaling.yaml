@@ -99,17 +99,33 @@ Resources:
   # CHIỀU TẮT: access log im lặng -> alarm -> Lambda -> desiredCount 0
   # ==========================================================================
 
-  # FilterPattern rỗng = đếm MỌI dòng log, không chỉ dòng access.
-  # Cố ý: nginx in vài dòng khởi động ("Configuration complete; ready for start up") ngay khi
-  # task lên. Nhờ đó metric có điểm dữ liệu > 0 ở chu kỳ chứa lúc khởi động, alarm chuyển về OK,
-  # và lần im lặng kế tiếp mới tạo được chuyển trạng thái OK -> ALARM để EventBridge bắt được.
-  # Nếu chỉ đếm dòng access, một task được đánh thức mà người dùng không quay lại sẽ giữ alarm
-  # ở ALARM liên tục, không có chuyển trạng thái nào, và service chạy mãi không ai tắt.
+  # Đếm mọi dòng log NGOẠI TRỪ dòng phát sinh từ 127.0.0.1.
+  #
+  # Vì sao phải loại trừ loopback (bài học trả giá 2026-08-26): health check trong
+  # pdftool-service.yaml gọi wget vào http://127.0.0.1:80/ mỗi 30 giây, và nginx ghi mỗi lần
+  # một dòng access log. Với FilterPattern rỗng, log group KHÔNG BAO GIỜ im lặng -- đo được 118
+  # dòng mỗi chu kỳ 30 phút toàn là health check tự nói chuyện với chính nó. Alarm không bao giờ
+  # kêu và service chạy vĩnh viễn. Đúng nửa "tự tắt" của scale-to-zero bị vô hiệu hoá.
+  #
+  # Loại trừ theo ĐỊA CHỈ NGUỒN chứ không theo user-agent "Wget": ở chế độ awsvpc không có
+  # request thật nào tới từ 127.0.0.1, nên bất biến này còn đúng kể cả khi ai đó đổi health
+  # check sang curl. Lọc theo "Wget" cũng chạy nhưng sẽ hỏng âm thầm khi đổi công cụ.
+  #
+  # Vẫn giữ được tính chất quan trọng của bản cũ: dòng khởi động của nginx
+  # ("Configuration complete; ready for start up", "start worker processes") KHÔNG tới từ
+  # loopback nên vẫn được đếm. Nhờ đó mỗi lần task lên là metric có điểm > 0, alarm về OK, và
+  # lần im lặng kế tiếp mới tạo được chuyển trạng thái OK -> ALARM cho EventBridge bắt. Thiếu
+  # tính chất này thì một task được đánh thức mà người dùng không quay lại sẽ giữ alarm ở ALARM
+  # liên tục, không có chuyển trạng thái nào, và cũng không ai tắt nó.
+  #
+  # Thêm một lợi ích: vì health check vẫn chảy log đều, DefaultValue 0 khiến CloudWatch phát ra
+  # điểm dữ liệu 0 tường minh thay vì "missing data" -- alarm không phải dựa vào
+  # TreatMissingData nữa (cái đó giờ chỉ còn lo trường hợp task đã tắt hẳn).
   ActivityMetricFilter:
     Type: AWS::Logs::MetricFilter
     Properties:
       LogGroupName: !Ref LogGroupName
-      FilterPattern: ''
+      FilterPattern: '-"127.0.0.1"'
       MetricTransformations:
         - MetricNamespace: AevPdfTool
           MetricName: !Sub "${ServiceName}-Activity"

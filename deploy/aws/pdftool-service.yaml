@@ -105,6 +105,11 @@ Resources:
             # wget là applet của busybox, có sẵn trong alpine -- không cần cài thêm gì.
             # Gọi / chứ không phải một endpoint riêng: site tĩnh, index.html tồn tại nghĩa là
             # nginx đã đọc được document root.
+            #
+            # RÀNG BUỘC VỚI pdftool-scaling.yaml: mỗi lần chạy, nginx ghi một dòng access log từ
+            # 127.0.0.1. Metric filter phát hiện idle bên stack scaling loại trừ đúng các dòng
+            # loopback này (FilterPattern '-"127.0.0.1"'). Nếu đổi health check sang gọi qua
+            # địa chỉ khác 127.0.0.1, service sẽ không bao giờ tự tắt nữa -- phải sửa cả filter.
             Command:
               - CMD-SHELL
               - "wget -q -O /dev/null http://127.0.0.1:80/ || exit 1"
