@@ -97,15 +97,22 @@ Route 53 Resolver query logging ghi lại; một subscription filter khớp tên
 ```
 Người dùng mở URL
    → DNS query (thất bại, NXDOMAIN)
-   → Resolver query log  ~1-3 phút
-   → subscription filter → Lambda → desiredCount=1
-   → Fargate kéo image + khởi động  ~40-60 giây
+   → Resolver query log → subscription filter → Lambda → desiredCount=1
+   → Fargate kéo image + khởi động
    → F5 lại là vào được
 ```
 
+Số đo thực tế ngày 2026-08-26, không phải ước lượng:
+
+| Chặng | Thời gian |
+|---|---|
+| Truy vấn DNS → Lambda `pdftool-scale-up` chạy | **23 giây** |
+| Lambda → task RUNNING và phục vụ được | ~90 giây |
+| **Tổng từ lúc bấm vào link tới lúc F5 được** | **~2 phút** |
+
 ### Đánh đổi phải nói rõ với người dùng
 
-**Lần truy cập đầu tiên sau khi ngủ luôn thất bại**, phải chờ khoảng **2–4 phút** rồi F5. Không
+**Lần truy cập đầu tiên sau khi ngủ luôn thất bại**, phải chờ khoảng **2 phút** rồi F5. Không
 có cách nào tránh được nếu không có thứ gì chạy sẵn để đón request — mà thứ đó (ALB nội bộ,
 ~18 USD/tháng) đắt hơn chính tiền chạy task 24/7.
 

@@ -15,8 +15,8 @@ Description: >
 # Lambda và service được bật lên.
 #
 # ĐÁNH ĐỔI PHẢI BIẾT TRƯỚC: lần truy cập đầu tiên sau khi ngủ LUÔN thất bại. Người dùng thấy
-# "không truy cập được trang" rồi phải F5 lại sau khoảng 2-4 phút (Resolver giao log về
-# CloudWatch mất ~1-3 phút, cộng ~40-60 giây Fargate kéo image và khởi động). Đây là cái giá
+# "không truy cập được trang" rồi phải F5 lại sau khoảng 2 phút. Đo thực tế 2026-08-26: truy
+# vấn DNS -> Lambda chạy mất 23 giây, cộng ~90 giây Fargate kéo image và khởi động. Đây là cái giá
 # của việc không có gì chạy sẵn để đón request. Cách duy nhất xoá được độ trễ này là đặt một
 # ALB nội bộ trước service (~18 USD/tháng, đắt hơn chính chi phí chạy task 24/7) -- nên nếu độ
 # trễ trở nên khó chịu, hãy bật WakeUpScheduleState thành ENABLED để hâm nóng đầu giờ làm
