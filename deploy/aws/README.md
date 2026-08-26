@@ -82,10 +82,22 @@ nginx ghi access log ra stdout → `/ecs/pdftool` → metric filter đếm số 
 alarm `pdftool-idle` kêu khi **30 phút** liên tiếp không có dòng nào → EventBridge →
 `pdftool-scale-down` đặt `desiredCount=0`.
 
-Metric filter đếm **mọi** dòng log chứ không chỉ dòng access, có chủ đích: nginx in vài dòng lúc
-khởi động, nhờ đó alarm về `OK` mỗi khi task lên. Nếu chỉ đếm dòng access thì một task được đánh
-thức mà người dùng không quay lại sẽ giữ alarm ở `ALARM` liên tục, không có chuyển trạng thái nào
-để EventBridge bắt, và service chạy mãi không ai tắt.
+Metric filter đếm mọi dòng log **ngoại trừ dòng từ `127.0.0.1`** (`FilterPattern: '-"127.0.0.1"'`).
+Hai lý do, cả hai đều học được bằng cách trả giá:
+
+1. **Phải loại loopback.** Health check gọi `wget` vào `http://127.0.0.1:80/` mỗi 30 giây và
+   nginx ghi mỗi lần một dòng. Bản đầu tiên đếm mọi dòng nên log group không bao giờ im lặng —
+   118 dòng mỗi chu kỳ 30 phút toàn là container tự nói chuyện với chính nó, alarm nằm `OK`
+   vĩnh viễn, service chạy mãi. Loại theo địa chỉ nguồn chứ không theo user-agent `Wget`: ở
+   `awsvpc` không có request thật nào từ loopback, nên bất biến còn đúng khi đổi sang `curl`.
+2. **Phải giữ dòng khởi động.** Dòng `Configuration complete; ready for start up` không tới từ
+   loopback nên vẫn được đếm — nhờ đó mỗi lần task lên là alarm về `OK`. Nếu chỉ đếm dòng access
+   của người dùng thật, một task được đánh thức mà người dùng không quay lại sẽ giữ alarm ở
+   `ALARM` liên tục, không có chuyển trạng thái nào để EventBridge bắt, và cũng không ai tắt nó.
+
+Đo thực tế 2026-08-26: ngừng truy cập → alarm vào `ALARM` → Lambda ghi
+`Scaled pdftool from 1 to 0 (idle).` → `runningCount=0`, Cloud Map còn 0 instance, DNS trả
+NXDOMAIN. Tổng ~36 phút cho cửa sổ idle 30 phút.
 
 ### Chiều bật — bằng chính truy vấn DNS
 
@@ -193,3 +205,13 @@ aws cloudformation deploy --stack-name pdftool-service `
 - **Mỗi VPC chỉ gắn được một Resolver query-log config.** Hiện `aqua-production` chưa có cái nào.
   Nếu sau này có công cụ khác bật DNS logging toàn VPC, `pdftool-scaling` sẽ xung đột và phải
   dùng chung config đó.
+- **Health check và tín hiệu idle ràng buộc nhau.** Health check tự sinh access log, nên bất kỳ
+  thay đổi nào ở nó cũng phải soi lại `FilterPattern` bên `pdftool-scaling.yaml`. Đổi health
+  check sang gọi qua địa chỉ khác `127.0.0.1` là service không bao giờ tự tắt nữa, và triệu
+  chứng rất khó thấy: mọi thứ trông vẫn "chạy tốt", chỉ là hoá đơn không bao giờ về 0. Cách
+  kiểm tra nhanh bất kỳ lúc nào:
+  `aws cloudwatch describe-alarms --alarm-names pdftool-idle --query 'MetricAlarms[0].StateValue'`
+  — service đang ngủ mà alarm không ở `ALARM` là có gì đó đang giữ nó thức.
+- **Xác minh scale-to-zero phải chờ đủ một cửa sổ idle.** Không có đường tắt: đặt
+  `IdleWindowMinutes` xuống `10` để thử cho nhanh, rồi trả lại `30`. Tuyên bố "kiến trúc đúng"
+  mà chưa quan sát trọn một chu kỳ tắt là cách bỏ sót đúng lỗi ở mục trên.
