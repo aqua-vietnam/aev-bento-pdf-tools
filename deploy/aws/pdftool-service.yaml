@@ -133,13 +133,23 @@ Resources:
       Cluster: !ImportValue
         Fn::Sub: "${ClusterStackName}-ClusterName"
       TaskDefinition: !Ref TaskDefinition
-      # CỐ Ý KHÔNG khai báo DesiredCount.
-      # ECS CreateService mặc định desiredCount = 0 -> đúng trạng thái scale-to-zero lúc tạo;
-      # và vì thuộc tính không có trong template, CloudFormation không đụng vào nó ở các lần
-      # update sau, nên pipeline deploy image mới KHÔNG đá service đang chạy về 0 (và cũng
-      # không tự bật service đang ngủ). Hai Lambda trong pdftool-scaling.yaml là chủ sở hữu
-      # duy nhất của con số này. Đây là điểm khác adms-console-service.yaml, nơi DesiredCount
-      # là tham số và mỗi lần redeploy phải nhớ truyền đúng giá trị hiện tại.
+      # CỐ Ý KHÔNG khai báo DesiredCount, để hai Lambda trong pdftool-scaling.yaml là chủ sở
+      # hữu duy nhất của con số này.
+      #
+      # Hành vi đã đo thực tế trên chính stack này (2026-08-26), không phải suy đoán:
+      #   - Lúc CREATE, CloudFormation dùng 1 (KHÔNG phải 0 như mặc định của ECS CreateService).
+      #     Nghĩa là ngay sau lần chạy pipeline đầu tiên sẽ có một task chạy; alarm idle sẽ đưa
+      #     nó về 0 sau IdleWindowMinutes.
+      #   - Lúc UPDATE, CloudFormation KHÔNG đụng vào desiredCount. Đã kiểm chứng: đưa service
+      #     về 0, update stack đổi TaskMemory -> task definition lên revision mới, desiredCount
+      #     vẫn nguyên 0. Đây là điều kiện tiên quyết để deploy không phá scale-to-zero, và là
+      #     điểm khác adms-console-service.yaml, nơi DesiredCount là tham số nên mỗi lần
+      #     redeploy phải nhớ truyền đúng giá trị hiện tại.
+      #
+      # Hệ quả cần biết: stage Deploy của pipeline chỉ truyền ImageTag, nên mọi tham số khác
+      # quay về DEFAULT ghi trong template này -- không phải giá trị lần deploy trước. Muốn đổi
+      # CPU/RAM/subnet lâu dài thì sửa default ở đây rồi commit, đừng chỉ truyền --parameter-
+      # overrides một lần bằng CLI.
       CapacityProviderStrategy:
         - CapacityProvider: FARGATE_SPOT
           Weight: 1

@@ -62,6 +62,16 @@ Nếu để CodePipeline tự đăng ký revision ngoài CloudFormation thì m�
 tính đó, nên CloudFormation không đụng vào — deploy lúc service đang ngủ thì nó vẫn ngủ (và sẽ
 chạy image mới ở lần bật kế tiếp), deploy lúc đang chạy thì nó rolling-update tại chỗ.
 
+Đã kiểm chứng bằng thực nghiệm ngày 2026-08-26, không phải suy đoán từ tài liệu: đưa service về
+0, update stack đổi `TaskMemory` → task definition lên revision mới mà `desiredCount` vẫn nguyên
+0. Ngoại lệ duy nhất là lần **CREATE**, khi CloudFormation dùng 1 chứ không phải 0 — nên ngay
+sau lần chạy pipeline đầu tiên sẽ có một task chạy, và alarm idle đưa nó về 0 sau 30 phút.
+
+Lưu ý kèm theo: stage Deploy chỉ truyền `ImageTag`, nên mọi tham số khác quay về **default ghi
+trong template**, không phải giá trị của lần deploy trước. Muốn đổi CPU/RAM/subnet lâu dài thì
+sửa default trong `pdftool-service.yaml` rồi commit, đừng chỉ chạy `--parameter-overrides` một
+lần bằng CLI — lần push kế tiếp sẽ xoá thay đổi đó.
+
 ---
 
 ## 3. Scale-to-zero
