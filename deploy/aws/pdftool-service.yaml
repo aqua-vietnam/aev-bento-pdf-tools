@@ -1,66 +1,156 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: >
-  AEV PDF Tool -- task definition, Cloud Map registration và ECS service.
-  Đây là stack DUY NHẤT mà CodePipeline cập nhật: stage Deploy chạy CloudFormation CREATE_UPDATE
-  trên stack này với ImageTag mới. Mọi tham số khác lấy qua Fn::ImportValue từ các stack nền
-  (pdftool-ecr / -foundation / -cluster / -security-group) nên pipeline không phải truyền lại.
+Description: >-
+  AEV PDF Tool - service stack. Task definition, Cloud Map registration, the ECS service, and
+  the scheduled start/stop that keeps it running only during working hours. This is the only
+  stack CodePipeline touches: its Deploy stage runs a CloudFormation CREATE_UPDATE here with
+  the new ImageTag. Everything else is pulled from pdftool-platform through Fn::ImportValue,
+  so the pipeline never has to pass it.
+
+# =============================================================================
+# NO SCALE-TO-ZERO. A FIXED SCHEDULE INSTEAD.
+#
+# An earlier revision let the service sleep after 30 idle minutes and woke it from a DNS query.
+# It worked, and it was measured: the first request after a sleep ALWAYS failed, and the user
+# had to wait ~2 minutes and reload before the site came up. Nobody should have to do that
+# mid-task, so demand-driven wake-up is gone - along with its two Lambdas, its idle alarm, its
+# Route 53 Resolver query logging and the Cloudflare wake worker.
+#
+# What replaces it is a plain timetable: the service is up from ScaleUpSchedule to
+# ScaleDownSchedule and down the rest of the time. Inside working hours a user never waits;
+# outside them nothing runs and nothing is billed. The failure mode is predictable rather than
+# random - "it is outside working hours" is something a person can understand and work around,
+# unlike "the first click always fails".
+#
+# It is implemented with Application Auto Scaling scheduled actions, not with Lambda +
+# EventBridge like the old design. Two declarative cron entries on a scalable target do the
+# whole job: no function code, no IAM role, no log group, nothing to go stale.
+#
+# WHO OWNS desiredCount
+#
+# The scalable target does - exclusively. That is why the ECS service below deliberately does
+# NOT declare DesiredCount. Behaviour verified on this stack on 2026-08-26, not guessed from
+# documentation:
+#   - On CREATE, CloudFormation uses 1 (not the ECS API default of 0), so a task is running
+#     right after the first pipeline run.
+#   - On UPDATE, CloudFormation does not touch desiredCount at all. Verified by taking the
+#     service to 0, updating the stack to change TaskMemory, and watching the task definition
+#     go to a new revision while desiredCount stayed 0.
+# That second property is what makes a deploy safe at any hour: pushing at 22:00 registers the
+# new task definition and leaves the service at 0, and the next morning's scheduled start
+# brings it up on the new image.
+# =============================================================================
 
 Parameters:
   ImageTag:
     Type: String
-    Description: >
-      Tag trong pdftool-ecr-repo cần deploy, là git short sha (8 ký tự) do buildspec sinh ra.
-      Không có default: ECR repo đặt IMMUTABLE nên không có tag "latest" để rơi về, và một
-      default sẽ khiến thay đổi tham số không liên quan âm thầm deploy lại image cũ.
+    Description: >-
+      Tag in the pdftool ECR repository to deploy, a git short SHA (8 characters) produced by
+      buildspec.yml. No default on purpose: the repository is IMMUTABLE so there is no "latest"
+      to fall back to, and a default would let an unrelated parameter change silently redeploy
+      a stale image.
 
   ServiceName:
     Type: String
     Default: pdftool
     AllowedPattern: "[a-z][a-z0-9-]{2,30}"
 
-  EcrStackName:
+  PlatformStackName:
     Type: String
-    Default: pdftool-ecr
+    Default: pdftool-platform
+    Description: >-
+      The single stack this one imports from: ECR repository, log group, both IAM roles, ECS
+      cluster and the task security group.
 
-  FoundationStackName:
-    Type: String
-    Default: pdftool-foundation
+  TaskCount:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 4
+    Description: >-
+      Tasks to run while the service is up. 1 is enough - the server only ships static files,
+      all PDF work happens as WASM in the user's browser. Raise it to 2 if you want the service
+      to survive losing a single Availability Zone, or if you switch to FARGATE_SPOT.
 
-  ClusterStackName:
+  CapacityProvider:
     Type: String
-    Default: pdftool-cluster
+    Default: FARGATE
+    AllowedValues: [FARGATE, FARGATE_SPOT]
+    Description: >-
+      FARGATE (on-demand) by default. FARGATE_SPOT is roughly 70% cheaper but AWS can reclaim
+      the task on two minutes' notice, and on a single-task service that is a ~90 second outage
+      at an unpredictable moment - exactly the kind of wait this design exists to avoid. Only
+      choose FARGATE_SPOT together with TaskCount 2 or more.
 
-  SecurityGroupStackName:
+  # ---------------------------------------------------------------- schedule
+
+  ScheduleState:
     Type: String
-    Default: pdftool-security-group
+    Default: ENABLED
+    AllowedValues: [ENABLED, DISABLED]
+    Description: >-
+      ENABLED: the service follows ScaleUpSchedule / ScaleDownSchedule below.
+      DISABLED: the scheduled actions are removed and the scalable target pins the service at
+      TaskCount, i.e. it runs 24/7. Switch to DISABLED if the timetable turns out to get in
+      people's way more than the bill justifies.
+
+  ScaleUpSchedule:
+    Type: String
+    Default: cron(0 7 ? * * *)
+    Description: >-
+      When the service comes up, in Application Auto Scaling cron syntax (six fields:
+      minute hour day-of-month month day-of-week year). Default: 07:00 every day.
+      Every day rather than MON-FRI on purpose - a weekday-only schedule means the site is
+      simply dead on a Saturday, with no wake-up path left to rescue it. Narrow it to
+      "cron(0 7 ? * MON-SAT *)" or "cron(0 7 ? * MON-FRI *)" if you would rather save more and
+      accept that.
+
+  ScaleDownSchedule:
+    Type: String
+    Default: cron(0 20 ? * * *)
+    Description: >-
+      When the service goes down. Default: 20:00 every day, giving a 13-hour window and cutting
+      the compute bill roughly in half. In-flight work is unaffected: everything happens in the
+      browser, so stopping the task loses nothing a user has open.
+
+  ScheduleTimezone:
+    Type: String
+    Default: Asia/Ho_Chi_Minh
+    Description: >-
+      IANA timezone the two crons are read in. Set explicitly so the schedule does not drift
+      relative to office hours the way a UTC cron would.
+
+  # ---------------------------------------------------------------- placement
 
   CloudMapNamespaceId:
     Type: String
     Default: ns-ox4hvwgzwledegxh
-    Description: Namespace internal.aquavietnam.vn (đã có sẵn, dùng chung với adms / adms-console).
+    Description: The internal.aquavietnam.vn namespace, already in place and shared with adms / adms-console.
 
   CloudMapServiceName:
     Type: String
     Default: pdftool
-    Description: Nhãn DNS dưới namespace, cho ra pdftool.internal.aquavietnam.vn.
+    Description: DNS label under the namespace, producing pdftool.internal.aquavietnam.vn.
 
   SubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
     Default: "subnet-0c0cbd6ec131f44d0,subnet-0da3b3f0179bc907c"
-    Description: Private app subnet của aqua-production (app-1 / app-2), đúng subnet adms-console dùng.
+    Description: Private app subnets of aqua-production (app-1 / app-2), the same ones adms-console uses.
 
   TaskCpu:
     Type: String
     Default: '256'
     AllowedValues: ['256', '512', '1024']
-    Description: >
-      256 (.25 vCPU) là mức tối thiểu của Fargate và đã dư cho nginx phục vụ file tĩnh -- toàn
-      bộ xử lý PDF chạy bằng WASM trên máy người dùng, server không tính toán gì.
+    Description: >-
+      256 (.25 vCPU) is the Fargate minimum and already generous for nginx serving static files.
+      All PDF processing runs as WASM on the user's machine; the server computes nothing.
 
   TaskMemory:
     Type: String
     Default: '512'
     AllowedValues: ['512', '1024', '2048']
+
+Conditions:
+  ScheduleEnabled: !Equals [!Ref ScheduleState, ENABLED]
 
 Resources:
   TaskDefinition:
@@ -72,9 +162,9 @@ Resources:
       Cpu: !Ref TaskCpu
       Memory: !Ref TaskMemory
       ExecutionRoleArn: !ImportValue
-        Fn::Sub: "${FoundationStackName}-ExecutionRoleArn"
+        Fn::Sub: "${PlatformStackName}-ExecutionRoleArn"
       TaskRoleArn: !ImportValue
-        Fn::Sub: "${FoundationStackName}-TaskRoleArn"
+        Fn::Sub: "${PlatformStackName}-TaskRoleArn"
       RuntimePlatform:
         OperatingSystemFamily: LINUX
         CpuArchitecture: X86_64
@@ -83,14 +173,15 @@ Resources:
           Image: !Sub
             - "${Repo}:${ImageTag}"
             - Repo: !ImportValue
-                Fn::Sub: "${EcrStackName}-RepositoryUri"
+                Fn::Sub: "${PlatformStackName}-RepositoryUri"
           Essential: true
           PortMappings:
             - ContainerPort: 80
               Protocol: tcp
-          # Cho phép uid 101 (user `nginx` của image nginx-unprivileged) bind cổng 80 mà không
-          # cần chạy root. Cùng cơ chế adms-console-service đang dùng. Nếu bỏ dòng này thì
-          # container khởi động rồi chết ngay với "bind() to 0.0.0.0:80 failed (13: Permission denied)".
+          # Lets uid 101 (the `nginx` user of the nginx-unprivileged image) bind port 80 without
+          # running as root. Same mechanism adms-console-service uses. Drop this line and the
+          # container starts and immediately dies with
+          # "bind() to 0.0.0.0:80 failed (13: Permission denied)".
           SystemControls:
             - Namespace: net.ipv4.ip_unprivileged_port_start
               Value: '0'
@@ -98,18 +189,18 @@ Resources:
             LogDriver: awslogs
             Options:
               awslogs-group: !ImportValue
-                Fn::Sub: "${FoundationStackName}-LogGroupName"
+                Fn::Sub: "${PlatformStackName}-LogGroupName"
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: !Ref ServiceName
           HealthCheck:
-            # wget là applet của busybox, có sẵn trong alpine -- không cần cài thêm gì.
-            # Gọi / chứ không phải một endpoint riêng: site tĩnh, index.html tồn tại nghĩa là
-            # nginx đã đọc được document root.
+            # wget is a busybox applet, present in alpine - nothing extra to install. It hits /
+            # rather than a dedicated endpoint: this is a static site, and index.html being
+            # served means nginx can read its document root.
             #
-            # RÀNG BUỘC VỚI pdftool-scaling.yaml: mỗi lần chạy, nginx ghi một dòng access log từ
-            # 127.0.0.1. Metric filter phát hiện idle bên stack scaling loại trừ đúng các dòng
-            # loopback này (FilterPattern '-"127.0.0.1"'). Nếu đổi health check sang gọi qua
-            # địa chỉ khác 127.0.0.1, service sẽ không bao giờ tự tắt nữa -- phải sửa cả filter.
+            # This health check used to be coupled to the idle signal of the old scale-to-zero
+            # stack, which had to filter its own loopback access-log lines back out. The
+            # schedule does not read logs at all, so the health check is now just a health check
+            # and can be changed freely.
             Command:
               - CMD-SHELL
               - "wget -q -O /dev/null http://127.0.0.1:80/ || exit 1"
@@ -125,8 +216,12 @@ Resources:
       NamespaceId: !Ref CloudMapNamespaceId
       DnsConfig:
         DnsRecords:
+          # TTL 15: long enough that clients are not re-resolving constantly, short enough that
+          # an address cached from a task replaced during a rolling deploy expires quickly. The
+          # old value of 10 existed to make the wake-from-DNS path react fast and is no longer
+          # needed.
           - Type: A
-            TTL: 10
+            TTL: 15
         RoutingPolicy: MULTIVALUE
       HealthCheckCustomConfig:
         FailureThreshold: 1
@@ -136,27 +231,11 @@ Resources:
     Properties:
       ServiceName: !Ref ServiceName
       Cluster: !ImportValue
-        Fn::Sub: "${ClusterStackName}-ClusterName"
+        Fn::Sub: "${PlatformStackName}-ClusterName"
       TaskDefinition: !Ref TaskDefinition
-      # CỐ Ý KHÔNG khai báo DesiredCount, để hai Lambda trong pdftool-scaling.yaml là chủ sở
-      # hữu duy nhất của con số này.
-      #
-      # Hành vi đã đo thực tế trên chính stack này (2026-08-26), không phải suy đoán:
-      #   - Lúc CREATE, CloudFormation dùng 1 (KHÔNG phải 0 như mặc định của ECS CreateService).
-      #     Nghĩa là ngay sau lần chạy pipeline đầu tiên sẽ có một task chạy; alarm idle sẽ đưa
-      #     nó về 0 sau IdleWindowMinutes.
-      #   - Lúc UPDATE, CloudFormation KHÔNG đụng vào desiredCount. Đã kiểm chứng: đưa service
-      #     về 0, update stack đổi TaskMemory -> task definition lên revision mới, desiredCount
-      #     vẫn nguyên 0. Đây là điều kiện tiên quyết để deploy không phá scale-to-zero, và là
-      #     điểm khác adms-console-service.yaml, nơi DesiredCount là tham số nên mỗi lần
-      #     redeploy phải nhớ truyền đúng giá trị hiện tại.
-      #
-      # Hệ quả cần biết: stage Deploy của pipeline chỉ truyền ImageTag, nên mọi tham số khác
-      # quay về DEFAULT ghi trong template này -- không phải giá trị lần deploy trước. Muốn đổi
-      # CPU/RAM/subnet lâu dài thì sửa default ở đây rồi commit, đừng chỉ truyền --parameter-
-      # overrides một lần bằng CLI.
+      # DesiredCount is deliberately absent - the scalable target below owns it. See the header.
       CapacityProviderStrategy:
-        - CapacityProvider: FARGATE_SPOT
+        - CapacityProvider: !Ref CapacityProvider
           Weight: 1
           Base: 0
       PlatformVersion: LATEST
@@ -165,20 +244,67 @@ Resources:
           Subnets: !Ref SubnetIds
           SecurityGroups:
             - !ImportValue
-              Fn::Sub: "${SecurityGroupStackName}-TaskSecurityGroupId"
+              Fn::Sub: "${PlatformStackName}-TaskSecurityGroupId"
           AssignPublicIp: DISABLED
       ServiceRegistries:
         - RegistryArn: !GetAtt CloudMapService.Arn
       DeploymentConfiguration:
-        # MinimumHealthyPercent 0: chỉ có 1 task, chấp nhận vài chục giây gián đoạn khi deploy
-        # thay vì trả tiền cho task thứ hai chạy song song.
-        MinimumHealthyPercent: 0
+        # MinimumHealthyPercent 100 with MaximumPercent 200: ECS starts the new task, waits for
+        # it to pass its health check and register in Cloud Map, and only then drains the old
+        # one. A deploy therefore costs a few minutes of a second task instead of a gap in
+        # service. The previous value of 0 traded that gap for a few cents; not making users
+        # wait is the whole point of this revision.
+        MinimumHealthyPercent: 100
         MaximumPercent: 200
         DeploymentCircuitBreaker:
           Enable: true
           Rollback: true
       EnableECSManagedTags: true
       PropagateTags: SERVICE
+
+  # ===========================================================================
+  # Scheduled start/stop
+  # ===========================================================================
+  #
+  # No RoleARN: for the ecs namespace Application Auto Scaling uses its own service-linked role
+  # (AWSServiceRoleForApplicationAutoScaling_ECSService) and creates it on first use.
+  #
+  # MinCapacity 0 while the schedule is on is what allows the evening action to reach 0 at all -
+  # a scalable target can never go below its registered minimum. The scheduled actions then move
+  # that minimum up and down; the target's own value here is only the floor of what they may set.
+  #
+  # Note the ordering with a stack update: CloudFormation re-applies MinCapacity/MaxCapacity from
+  # this template on every deploy, but neither value forces a change on its own (a lowered
+  # minimum does not scale in, a raised maximum does not scale out). So a mid-day deploy leaves a
+  # running service running, and a midnight deploy leaves a stopped service stopped. The next
+  # scheduled action is what actually moves it.
+  ScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn: ECSService
+    Properties:
+      ServiceNamespace: ecs
+      ScalableDimension: ecs:service:DesiredCount
+      ResourceId: !Sub
+        - "service/${Cluster}/${ServiceName}"
+        - Cluster: !ImportValue
+            Fn::Sub: "${PlatformStackName}-ClusterName"
+      MinCapacity: !If [ScheduleEnabled, 0, !Ref TaskCount]
+      MaxCapacity: !Ref TaskCount
+      ScheduledActions: !If
+        - ScheduleEnabled
+        - - ScheduledActionName: !Sub "${ServiceName}-start"
+            Schedule: !Ref ScaleUpSchedule
+            Timezone: !Ref ScheduleTimezone
+            ScalableTargetAction:
+              MinCapacity: !Ref TaskCount
+              MaxCapacity: !Ref TaskCount
+          - ScheduledActionName: !Sub "${ServiceName}-stop"
+            Schedule: !Ref ScaleDownSchedule
+            Timezone: !Ref ScheduleTimezone
+            ScalableTargetAction:
+              MinCapacity: 0
+              MaxCapacity: 0
+        - !Ref AWS::NoValue
 
 Outputs:
   ServiceName:
@@ -188,8 +314,14 @@ Outputs:
   TaskDefinitionArn:
     Value: !Ref TaskDefinition
   DeployedImageTag:
-    Description: Tag đang chạy -- đối chiếu với git short sha để biết pipeline đã lên tới đâu.
+    Description: The tag currently running - compare against the git short SHA to see how far the pipeline got.
     Value: !Ref ImageTag
   ServiceDnsName:
-    Description: Địa chỉ đưa cho người dùng.
+    Description: The address to hand to users.
     Value: !Sub "http://${CloudMapServiceName}.internal.aquavietnam.vn"
+  ScheduleSummary:
+    Description: The timetable in force, or a note that the service runs continuously.
+    Value: !If
+      - ScheduleEnabled
+      - !Sub "up ${ScaleUpSchedule} / down ${ScaleDownSchedule} (${ScheduleTimezone})"
+      - !Sub "schedule disabled - running ${TaskCount} task(s) 24/7"

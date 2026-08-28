@@ -1,6 +1,6 @@
 version: 0.2
 
-# Buildspec cho CodeBuild project pdftool-build (do pdftool-pipeline.yaml tạo ra).
+# Buildspec cho CodeBuild project pdftool-build (do pdftool-platform.yaml tạo ra).
 #
 # Hai lần docker build, không phải một:
 #   1. Dockerfile ở gốc repo -> image AEV PDF đầy đủ, nginx nghe 8080 (y hệt bản đang chạy
@@ -15,7 +15,7 @@ version: 0.2
 
 env:
   variables:
-    IMAGE_REPO_NAME: pdftool-ecr-repo
+    IMAGE_REPO_NAME: pdftool
     SITE_URL: http://pdftool.internal.aquavietnam.vn
     VITE_BRAND_NAME: AEV PDF
     VITE_BRAND_LOGO: images/aqua-logo.png

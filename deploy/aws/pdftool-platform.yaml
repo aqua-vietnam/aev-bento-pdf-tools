@@ -1,0 +1,643 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  AEV PDF Tool - platform stack. Creates everything the service needs but that does not change
+  on every deploy: ECR repository, CloudWatch log group, the two IAM roles a Fargate task
+  needs, the ECS cluster, the task security group, and the full CI/CD pipeline
+  (S3 artifact bucket + CodeBuild + CodePipeline).
+
+  Deploy this stack once. CodePipeline then creates and keeps updating the second and last
+  stack, pdftool-service, on every push to the tracked branch.
+
+# =============================================================================
+# WHY ONE STACK INSTEAD OF SIX
+#
+# This used to be split into pdftool-ecr / -foundation / -cluster / -security-group /
+# -scaling / -pipeline. Six stacks for a single internal static site meant six deploy commands
+# in a fixed order, five Fn::ImportValue chains to keep in sync, and no way to change a
+# security group rule without first remembering which stack owned it. Everything in here
+# shares one lifecycle: created once, touched only when the platform itself changes.
+#
+# Only pdftool-service stays separate, and only because it cannot be merged: it takes the
+# ImageTag of the build as a parameter and is updated by the pipeline on every deploy. A stack
+# cannot update itself, so the pipeline has to live outside the stack it deploys.
+#
+# WHY EVERYTHING IS IN ENGLISH
+#
+# Templates are ASCII-only on purpose. AWS CLI on Windows reads file:// through the system code
+# page, so a non-ASCII template fails with "text contents could not be decoded" unless
+# AWS_CLI_FILE_ENCODING=UTF-8 is set. Keeping templates ASCII removes that trap entirely.
+# Team-facing prose lives in README.md, which stays in Vietnamese.
+#
+# WHAT IS NO LONGER HERE: SCALE-TO-ZERO
+#
+# The previous design shut the service down after 30 idle minutes and woke it on a DNS query.
+# The measured cost of that: the first request after a sleep ALWAYS failed, and the user had to
+# wait ~2 minutes and reload. That trade was rejected. The two Lambdas, the idle alarm, the
+# Route 53 Resolver query logging and the Cloudflare wake worker are all gone, which is most of
+# why six stacks collapsed into one.
+#
+# Cost is still controlled, just on a timetable instead of on demand: pdftool-service registers
+# an Application Auto Scaling scalable target with two scheduled actions (up in the morning,
+# down in the evening). Two declarative cron entries, no function code anywhere.
+# =============================================================================
+
+Parameters:
+  ServiceName:
+    Type: String
+    Default: pdftool
+    AllowedPattern: "[a-z][a-z0-9-]{2,30}"
+    Description: >-
+      Name prefix for every resource in this stack. pdftool-service.yaml defaults to the same
+      value; change it in both places or not at all.
+
+  # ---------------------------------------------------------------- networking
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Default: vpc-02a4ec6a8e5959339
+    Description: >-
+      Must be vpc-02a4ec6a8e5959339 (aqua-production). It is the ONLY VPC associated with the
+      private hosted zone behind the internal.aquavietnam.vn namespace (Z04248794JU73UK411J4);
+      running the task in any other VPC means pdftool.internal.aquavietnam.vn does not resolve.
+
+  OperatorNetworkCidr:
+    Type: String
+    Default: 10.0.0.0/8
+    Description: >-
+      Internal network range users connect from, over Site-to-Site VPN + Transit Gateway. The
+      default matches what adms-console-task-sg already allows, even though adms-console is a
+      far more sensitive service (logins, timekeeping/PII). This site only serves files the
+      user uploaded into their own browser and does all processing client-side, so there is no
+      case for a tighter rule here than on the more sensitive service. Narrow it if you want.
+    AllowedPattern: '^(\d{1,3}\.){3}\d{1,3}/\d{1,2}$'
+    ConstraintDescription: must be a CIDR, for example 10.56.10.0/24.
+
+  SecondaryNetworkCidr:
+    Type: String
+    Default: 172.16.0.0/15
+    Description: >-
+      Second range the Transit Gateway advertises alongside 10.0.0.0/8. The two form one flat
+      routing space, not a per-office split. Omitting this range blocks any host in
+      172.16.x/172.17.x that can still route here, and the symptom is a bare "connection timed
+      out" rather than a clear error - expensive to diagnose. Set to an empty string to skip it.
+    AllowedPattern: '^((\d{1,3}\.){3}\d{1,3}/\d{1,2})?$'
+    ConstraintDescription: must be a CIDR or empty.
+
+  # ---------------------------------------------------------------- logging
+
+  LogRetentionInDays:
+    Type: Number
+    Default: 14
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365]
+    Description: >-
+      Deliberately shorter than the 90 days adms-console keeps: these are nginx access logs of
+      an internal tool, not administrative actions on PII, so they carry no long-term
+      investigative value. Long enough to look back over a few weeks of use.
+
+  # ---------------------------------------------------------------- CI/CD
+
+  GitHubOwner:
+    Type: String
+    Default: aqua-vietnam
+
+  GitHubRepo:
+    Type: String
+    Default: aev-bento-pdf-tools
+
+  GitHubBranch:
+    Type: String
+    Default: aev-custom
+    Description: >-
+      AEV's custom branch. main mirrors upstream BentoPDF and carries no AEV branding -
+      deploying from main produces a stock BentoPDF site.
+
+  GitHubConnectionArn:
+    Type: String
+    Default: arn:aws:codeconnections:ap-southeast-1:474082330515:connection/59427c0a-fa99-4977-8152-8b8a1aa99513
+    Description: >-
+      The existing "aquavn-github" connection, currently AVAILABLE and already used by
+      aqua-vietnam/demo-repository. Same GitHub org, so no new connection is needed.
+
+  ServiceStackName:
+    Type: String
+    Default: pdftool-service
+    Description: >-
+      Stack the Deploy stage creates/updates. Its template ships inside the build artifact, so
+      the pipeline never needs a copy of it here.
+
+  BuildComputeType:
+    Type: String
+    Default: BUILD_GENERAL1_MEDIUM
+    AllowedValues: [BUILD_GENERAL1_SMALL, BUILD_GENERAL1_MEDIUM, BUILD_GENERAL1_LARGE]
+    Description: >-
+      MEDIUM (7 GB RAM), not SMALL: npm run build:with-docs runs vite build, generates i18n
+      pages for ~20 languages and builds VitePress, with NODE_OPTIONS=--max-old-space-size=3072
+      baked into the Dockerfile. SMALL only has 3 GB and will almost certainly OOM. Move to
+      LARGE if the build still runs out of memory.
+
+Conditions:
+  HasSecondaryCidr: !Not [!Equals [!Ref SecondaryNetworkCidr, '']]
+
+Resources:
+
+  # ===========================================================================
+  # Container registry
+  # ===========================================================================
+
+  # Its own repository rather than sharing aev-prod-ecr-*: those belong to the aev-prod-pipeline
+  # (AquaEW) lifecycle, deploy on a completely different cadence, and the "keep the 10 most
+  # recent images" lifecycle rule would interleave two unrelated histories.
+  Repository:
+    Type: AWS::ECR::Repository
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      RepositoryName: !Ref ServiceName
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      # IMMUTABLE, same as adms-console-ecr: tags are git short SHAs and are never overwritten.
+      # Consequence: there is no "latest" tag in this repository, which is why buildspec.yml
+      # skips the build when the tag already exists (re-running the pipeline on the same commit).
+      ImageTagMutability: IMMUTABLE
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep the 10 most recent images. To roll back further, rebuild from git.",
+                "selection": {
+                  "tagStatus": "any",
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": { "type": "expire" }
+              }
+            ]
+          }
+
+  # ===========================================================================
+  # Task runtime: log group, IAM roles, cluster, security group
+  # ===========================================================================
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/ecs/${ServiceName}"
+      RetentionInDays: !Ref LogRetentionInDays
+
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ServiceName}-execution-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  # Empty, same posture as adms-console-task-role: nothing in the container calls any AWS API.
+  # It exists so a future feature that does need permissions has somewhere to attach a policy
+  # without touching the execution role.
+  #
+  # There is no Secrets Manager secret anywhere in this stack either: BentoPDF is a static site,
+  # all PDF processing runs as WASM in the browser, the container holds no secrets.
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ServiceName}-task-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+
+  # Its own cluster rather than aev-prod-ecs-cluster (kafka, grafana, api, adminsite,
+  # chat-service, zookeeper): keeping an unrelated internal tool out of that blast radius costs
+  # nothing, since an ECS cluster is just a free logical grouping.
+  #
+  # Both capacity providers are registered so pdftool-service can pick either. The default
+  # strategy is on-demand FARGATE: with scale-to-zero gone the service is expected to answer
+  # immediately at any hour, and a Spot reclaim on a single-task service is a ~90 second outage.
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${ServiceName}-cluster"
+      CapacityProviders: [FARGATE, FARGATE_SPOT]
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Weight: 1
+          Base: 0
+      ClusterSettings:
+        - Name: containerInsights
+          Value: disabled
+      Tags:
+        - Key: Name
+          Value: !Sub "${ServiceName}-cluster"
+        - Key: Environment
+          Value: Prod
+
+  # TCP 80 from internal ranges only. Not behind aev-prod-alb (internet-facing) the way
+  # aev-prod-ecs-service-adminsite is: this is an internal tool reached over Site-to-Site VPN,
+  # with no reason to be exposed to the internet.
+  #
+  # Nothing here touches RDS (unlike adms-console-security-group): the container has no backend
+  # and opens no database connection.
+  #
+  # Egress is left at the default allow-all: the task needs outbound HTTPS through the NAT
+  # gateway to pull its image from ECR and ship logs to CloudWatch. Nothing inbound widens.
+  TaskSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "${ServiceName} ECS/Fargate task -- internal HTTP in, HTTPS out"
+      GroupName: !Sub "${ServiceName}-task-sg"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref OperatorNetworkCidr
+          Description: HTTP from the internal network over Site-to-Site VPN
+      Tags:
+        - Key: Name
+          Value: !Sub "${ServiceName}-task-sg"
+        - Key: Environment
+          Value: Prod
+
+  # A separate rule rather than a second entry in SecurityGroupIngress above: the secondary
+  # range may be empty, and a single element of an inline list cannot carry a Condition.
+  SecondaryCidrIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Condition: HasSecondaryCidr
+    Properties:
+      GroupId: !Ref TaskSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: !Ref SecondaryNetworkCidr
+      Description: HTTP from the second range advertised by the Transit Gateway
+
+  # ===========================================================================
+  # CI/CD - artifact store
+  # ===========================================================================
+
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "codepipeline-${AWS::Region}-${AWS::AccountId}-${ServiceName}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldArtifacts
+            Status: Enabled
+            ExpirationInDays: 30
+
+  # ===========================================================================
+  # CI/CD - CodeBuild
+  # ===========================================================================
+
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ServiceName}-codebuild-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: codebuild.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: build-and-push
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ServiceName}-build"
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${ServiceName}-build:*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                Resource: !Sub "${ArtifactBucket.Arn}/*"
+              # GetAuthorizationToken takes no specific resource; "*" is mandatory.
+              - Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:CompleteLayerUpload
+                  - ecr:InitiateLayerUpload
+                  - ecr:PutImage
+                  - ecr:UploadLayerPart
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                  # describe-images: buildspec uses it to detect an existing tag (IMMUTABLE repo).
+                  - ecr:DescribeImages
+                Resource: !GetAtt Repository.Arn
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${ServiceName}-build"
+      Description: Build the AEV PDF Tool image and push it to ECR.
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: !Ref BuildComputeType
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: IMAGE_REPO_NAME
+            Value: !Ref Repository
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: deploy/aws/buildspec.yml
+      # npm ci + vite build + docs + 20 i18n variants: observed at roughly 12-20 minutes.
+      TimeoutInMinutes: 45
+      Cache:
+        Type: LOCAL
+        Modes: [LOCAL_DOCKER_LAYER_CACHE, LOCAL_SOURCE_CACHE]
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Sub "/aws/codebuild/${ServiceName}-build"
+      Tags:
+        - Key: Project
+          Value: AevPdfTool
+        - Key: Environment
+          Value: Prod
+
+  # ===========================================================================
+  # CI/CD - the role CloudFormation assumes in the Deploy stage
+  # ===========================================================================
+
+  CfnDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ServiceName}-cfn-deploy-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: cloudformation.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: manage-service-stack
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # ECS and Cloud Map: most of their APIs do not support resource-level permissions
+              # (RegisterTaskDefinition, CreateService on a new cluster, ...), so the scope stays
+              # at the service level rather than per-ARN.
+              - Effect: Allow
+                Action:
+                  - ecs:*
+                  - servicediscovery:*
+                Resource: '*'
+              # Application Auto Scaling drives the scheduled start/stop in pdftool-service.
+              # None of its APIs take a resource ARN, so "*" is the only possible scope.
+              - Effect: Allow
+                Action: application-autoscaling:*
+                Resource: '*'
+              # The first ECS scalable target in an account creates the Application Auto Scaling
+              # service-linked role. In 474082330515 that role already exists (aev-prod-ecs-*
+              # and ad-manager already use scheduled/target-tracking scaling), so this statement
+              # is a no-op today - it is here so the template still works in a fresh account
+              # instead of failing the very first deploy with AccessDenied on a call nobody
+              # expects. The condition pins it to that one role rather than granting the
+              # account-wide ability to mint linked roles.
+              - Effect: Allow
+                Action: iam:CreateServiceLinkedRole
+                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService"
+                Condition:
+                  StringEquals:
+                    iam:AWSServiceName: ecs.application-autoscaling.amazonaws.com
+              # Only the two pdftool roles may be handed to ECS, not every role in the account.
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource:
+                  - !GetAtt ExecutionRole.Arn
+                  - !GetAtt TaskRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: ecs-tasks.amazonaws.com
+              # CloudFormation reads VPC/subnet/SG metadata to validate AWS::EC2::*::Id parameters.
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeSecurityGroups
+                  - ec2:DescribeVpcs
+                Resource: '*'
+              - Effect: Allow
+                Action: logs:DescribeLogGroups
+                Resource: '*'
+
+  # ===========================================================================
+  # CI/CD - CodePipeline
+  # ===========================================================================
+  #
+  # Why a dedicated pipeline instead of another stage on aev-prod-pipeline: that pipeline's
+  # Source points at a different repository (aqv-ew/AQVEW, branch prod) and deploys into
+  # aev-prod-vpc. A CodePipeline has exactly one Source; it cannot also watch this repository.
+  #
+  # Why the Deploy stage is CloudFormation rather than an ECS action like jira-gateway-pipeline
+  # uses: the ECR repository is IMMUTABLE so there is no "latest" tag, and the task definition
+  # is owned by CloudFormation. If CodePipeline registered task definition revisions outside
+  # CloudFormation, every later stack update (CPU, subnets, ...) would drop the service back to
+  # the image recorded in the stack parameters. Letting CloudFormation own the image too removes
+  # that drift.
+
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ServiceName}-codepipeline-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: codepipeline.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: run-pipeline
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                  - s3:GetBucketVersioning
+                Resource:
+                  - !GetAtt ArtifactBucket.Arn
+                  - !Sub "${ArtifactBucket.Arn}/*"
+              - Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                Resource: !GetAtt CodeBuildProject.Arn
+              - Effect: Allow
+                Action: codestar-connections:UseConnection
+                Resource: !Ref GitHubConnectionArn
+              - Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:SetStackPolicy
+                  - cloudformation:ValidateTemplate
+                Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${ServiceStackName}/*"
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt CfnDeployRole.Arn
+                Condition:
+                  StringEquals:
+                    iam:PassedToService: cloudformation.amazonaws.com
+
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub "${ServiceName}-pipeline"
+      RoleArn: !GetAtt CodePipelineServiceRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: GitHub_Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: '1'
+              Configuration:
+                ConnectionArn: !Ref GitHubConnectionArn
+                FullRepositoryId: !Sub "${GitHubOwner}/${GitHubRepo}"
+                BranchName: !Ref GitHubBranch
+                OutputArtifactFormat: CODE_ZIP
+                DetectChanges: true
+              OutputArtifacts:
+                - Name: SourceOutput
+              RunOrder: 1
+
+        - Name: Build
+          Actions:
+            - Name: Build_Image
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+              InputArtifacts:
+                - Name: SourceOutput
+              OutputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+
+        - Name: Deploy
+          Actions:
+            - Name: Update_Service_Stack
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Provider: CloudFormation
+                Version: '1'
+              Configuration:
+                ActionMode: CREATE_UPDATE
+                StackName: !Ref ServiceStackName
+                TemplatePath: BuildOutput::deploy/aws/pdftool-service.yaml
+                RoleArn: !GetAtt CfnDeployRole.Arn
+                # ImageTag is the ONLY parameter passed in; everything else comes from the
+                # defaults in that template or from Fn::ImportValue against this stack.
+                ParameterOverrides: '{"ImageTag": {"Fn::GetParam": ["BuildOutput", "build.json", "ImageTag"]}}'
+              InputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
+
+      Tags:
+        - Key: Project
+          Value: AevPdfTool
+        - Key: Environment
+          Value: Prod
+
+Outputs:
+
+  # -- consumed by pdftool-service.yaml via Fn::ImportValue -------------------
+
+  RepositoryUri:
+    Value: !GetAtt Repository.RepositoryUri
+    Export:
+      Name: !Sub "${AWS::StackName}-RepositoryUri"
+  RepositoryName:
+    Value: !Ref Repository
+    Export:
+      Name: !Sub "${AWS::StackName}-RepositoryName"
+  LogGroupName:
+    Value: !Ref LogGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-LogGroupName"
+  ExecutionRoleArn:
+    Value: !GetAtt ExecutionRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ExecutionRoleArn"
+  TaskRoleArn:
+    Value: !GetAtt TaskRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-TaskRoleArn"
+  ClusterName:
+    Value: !Ref Cluster
+    Export:
+      Name: !Sub "${AWS::StackName}-ClusterName"
+  TaskSecurityGroupId:
+    Value: !Ref TaskSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-TaskSecurityGroupId"
+
+  # -- operator convenience --------------------------------------------------
+
+  PipelineName:
+    Value: !Ref Pipeline
+  PipelineUrl:
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/codesuite/codepipeline/pipelines/${Pipeline}/view"
+  CodeBuildProjectName:
+    Value: !Ref CodeBuildProject
+  ArtifactBucketName:
+    Value: !Ref ArtifactBucket
