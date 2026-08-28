@@ -10,7 +10,7 @@
         pdftool-platform   -> ECR + log group + 2 IAM role + ECS cluster + security group
                               + S3 artifact bucket + CodeBuild + CodePipeline.
                               Deploy bằng script này.
-        pdftool-service    -> task definition + Cloud Map + ECS service + lịch bật/tắt.
+        pdftool-service    -> task definition + Cloud Map + ECS service.
                               KHÔNG deploy ở đây: chính CodePipeline tạo nó ở stage Deploy,
                               vì nó cần ImageTag của bản build đầu tiên. Pipeline tự chạy
                               ngay sau khi được tạo.
@@ -85,8 +85,9 @@ Write-Host ""
 Write-Host "Theo dõi:"
 Write-Host "  aws codepipeline get-pipeline-state --name pdftool-pipeline --query 'stageStates[].{stage:stageName,status:latestExecution.status}' --output table"
 Write-Host ""
-Write-Host "Khi pipeline xong, service chạy 1 task và theo lịch 07:00-20:00 (giờ Việt Nam)."
-Write-Host "Bật tay ngoài giờ:"
+Write-Host "Khi pipeline xong, service chạy 1 task. Lịch bật/tắt KHÔNG nằm trong stack này:"
+Write-Host "aev-global-prod-ecs-scheduler-fn của tài khoản tắt mọi ECS service lúc 23:00 và bật"
+Write-Host "lại lúc 05:00 (Asia/Bangkok), mọi ngày. Bật tay ngoài giờ:"
 Write-Host "  aws ecs update-service --cluster pdftool-cluster --service pdftool --desired-count 1"
 Write-Host ""
 Write-Host "Rồi kiểm tra tên miền phân giải được từ trong VPC:"
