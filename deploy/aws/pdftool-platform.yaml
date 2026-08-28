@@ -423,24 +423,12 @@ Resources:
                   - ecs:*
                   - servicediscovery:*
                 Resource: '*'
-              # Application Auto Scaling drives the scheduled start/stop in pdftool-service.
-              # None of its APIs take a resource ARN, so "*" is the only possible scope.
-              - Effect: Allow
-                Action: application-autoscaling:*
-                Resource: '*'
-              # The first ECS scalable target in an account creates the Application Auto Scaling
-              # service-linked role. In 474082330515 that role already exists (aev-prod-ecs-*
-              # and ad-manager already use scheduled/target-tracking scaling), so this statement
-              # is a no-op today - it is here so the template still works in a fresh account
-              # instead of failing the very first deploy with AccessDenied on a call nobody
-              # expects. The condition pins it to that one role rather than granting the
-              # account-wide ability to mint linked roles.
-              - Effect: Allow
-                Action: iam:CreateServiceLinkedRole
-                Resource: !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService"
-                Condition:
-                  StringEquals:
-                    iam:AWSServiceName: ecs.application-autoscaling.amazonaws.com
+              # No application-autoscaling permissions here on purpose. pdftool-service used to
+              # declare its own scalable target with scheduled actions; it no longer does,
+              # because aev-global-prod-ecs-scheduler-fn already stops and starts every ECS
+              # service in the account on a nightly timetable. Granting the permission "just in
+              # case" would only hide the fact that this stack has no business scaling anything.
+              #
               # Only the two pdftool roles may be handed to ECS, not every role in the account.
               - Effect: Allow
                 Action: iam:PassRole

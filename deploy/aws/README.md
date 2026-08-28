@@ -18,7 +18,7 @@ security group nếu chưa nhớ ra stack nào đang giữ nó. Tất cả nhữ
 | Stack | Chứa gì | Ai deploy |
 |---|---|---|
 | `pdftool-platform` | ECR repo, log group `/ecs/pdftool`, `pdftool-execution-role`, `pdftool-task-role`, ECS cluster, `pdftool-task-sg`, S3 artifact bucket, CodeBuild, CodePipeline | `bootstrap.ps1`, một lần |
-| `pdftool-service` | Task definition, Cloud Map service, ECS service, lịch bật/tắt (Application Auto Scaling) | CodePipeline, mỗi lần push |
+| `pdftool-service` | Task definition, Cloud Map service, ECS service | CodePipeline, mỗi lần push |
 
 **Vì sao không gom nốt thành 1:** `pdftool-service` nhận `ImageTag` của bản build làm tham số và
 bị chính pipeline cập nhật mỗi lần deploy. Một stack không tự update chính nó được, nên pipeline
@@ -88,29 +88,38 @@ Bỏ theo đó: 2 Lambda, alarm idle, metric filter, Route 53 Resolver query log
 nhất của cơ chế cũ), Lambda Function URL, và Cloudflare wake worker (`deploy/cloudflare/`).
 Đây cũng là lý do chính khiến 7 stack gom lại được thành 2.
 
-### Cái gì thay thế
+### Cái gì thay thế: lịch dùng chung của toàn tài khoản
 
-Một thời khoá biểu cố định. Trong giờ chạy, service luôn sẵn sàng — không ai phải chờ.
-Ngoài giờ, không có gì chạy và không tính tiền.
+Không phải lịch riêng của pdftool. Tài khoản `474082330515` **đã có sẵn** đúng cơ chế này ở mức
+toàn tài khoản, và pdftool chỉ việc nằm trong đó:
 
-| | Mặc định |
+```
+aev-global-prod-ecs-scheduler-start   cron(0 5 * * ? *)    Asia/Bangkok
+aev-global-prod-ecs-scheduler-stop    cron(0 23 * * ? *)   Asia/Bangkok
+        └─> lambda aev-global-prod-ecs-scheduler-fn
+```
+
+| | |
 |---|---|
-| Bật | `cron(0 7 ? * * *)` — 07:00 |
-| Tắt | `cron(0 20 ? * * *)` — 20:00 |
-| Múi giờ | `Asia/Ho_Chi_Minh` |
+| Giờ chạy | **05:00 – 23:00, mọi ngày** (kể cả thứ Bảy, Chủ nhật) |
+| Múi giờ | `Asia/Bangkok` — cùng UTC+7 với `Asia/Ho_Chi_Minh` |
+| Tài nguyên stack này phải khai báo | **không có gì** |
 
-**Mặc định là mọi ngày, không phải MON-FRI.** Cơ chế cũ có đường đánh thức theo nhu cầu nên
-lịch chỉ là bổ trợ; giờ thì không còn đường nào cả — đặt `MON-FRI` nghĩa là thứ Bảy site chết
-hẳn, không cứu được trừ khi có người chạy lệnh AWS CLI. Nếu chắc chắn không ai dùng cuối tuần
-thì thu hẹp lại để tiết kiệm thêm, nhưng đó là một quyết định có hậu quả, không phải mặc định.
+Lambda đó duyệt **mọi cluster và mọi service** trong tài khoản, nên `pdftool-cluster` được phủ
+ngay khi nó tồn tại — không cần đăng ký gì. Lúc 23:00 nó ghi `desiredCount` hiện tại vào tag
+`scheduler:previousDesiredCount` rồi đặt về 0; lúc 05:00 nó khôi phục lại giá trị đó (mặc định 1).
+Service nào gắn tag `scheduler:exclude=true` thì bị bỏ qua.
 
-Hiện thực bằng **Application Auto Scaling scheduled action**, không phải Lambda + EventBridge như
-bản cũ: hai dòng cron khai báo trên một scalable target là xong. Không có code hàm, không IAM
-role riêng, không log group, không có gì để mục ruỗng theo thời gian.
+**Vì sao không tự khai scheduled action riêng.** Bản nháp trước của template này có hai
+Application Auto Scaling scheduled action 07:00/20:00. Bỏ đi sau khi đọc code Lambda: lúc 23:00
+nó gọi `RegisterScalableTarget` với `ScheduledScalingSuspended=true`, tức là **đình chỉ luôn mọi
+scheduled action của service đó**. Hai cơ chế sẽ giẫm chân nhau, và bên thua là bên viết trong
+repo này. Ít tài nguyên hơn, cùng thời khoá biểu với phần còn lại của production, và không có gì
+để lệch pha.
 
 ### Ai sở hữu `desiredCount`
 
-Scalable target, và chỉ nó. Vì thế `pdftool-service.yaml` **cố ý không khai báo `DesiredCount`**
+Lambda lịch chung, và chỉ nó. Vì thế `pdftool-service.yaml` **cố ý không khai báo `DesiredCount`**
 trên ECS service. Hành vi đã kiểm chứng bằng thực nghiệm ngày 2026-08-26, không phải suy đoán từ
 tài liệu:
 
@@ -119,33 +128,8 @@ tài liệu:
 - Lúc **UPDATE**, CloudFormation **không đụng vào** `desiredCount`. Đã thử: đưa service về 0,
   update stack đổi `TaskMemory` → task definition lên revision mới mà `desiredCount` vẫn nguyên 0.
 
-Tính chất thứ hai là thứ khiến deploy an toàn ở bất kỳ giờ nào: push lúc 22:00 chỉ đăng ký task
-definition mới và để service nằm im ở 0; sáng hôm sau lịch bật lên với image mới.
-
-Tương tự với chính scalable target: CloudFormation áp lại `MinCapacity`/`MaxCapacity` mỗi lần
-deploy, nhưng không giá trị nào tự ép thay đổi (hạ minimum không scale-in, nâng maximum không
-scale-out). Deploy giữa trưa để service đang chạy vẫn chạy; deploy nửa đêm để service đang tắt
-vẫn tắt.
-
-### Đổi giờ, hoặc tắt hẳn lịch
-
-Sửa default trong `pdftool-service.yaml` rồi commit (xem lưu ý ở mục 2). Muốn thử nhanh một lần:
-
-```powershell
-# Đổi khung giờ
-aws cloudformation deploy --stack-name pdftool-service `
-  --template-file deploy/aws/pdftool-service.yaml `
-  --parameter-overrides ImageTag=<tag-dang-chay> `
-    "ScaleUpSchedule=cron(30 6 ? * MON-SAT *)" "ScaleDownSchedule=cron(0 21 ? * MON-SAT *)"
-
-# Bỏ lịch, chạy 24/7
-aws cloudformation deploy --stack-name pdftool-service `
-  --template-file deploy/aws/pdftool-service.yaml `
-  --parameter-overrides ImageTag=<tag-dang-chay> ScheduleState=DISABLED
-```
-
-`ScheduleState=DISABLED` gỡ hai scheduled action và ghim scalable target ở `TaskCount`, tức là
-chạy liên tục.
+Tính chất thứ hai là thứ khiến deploy an toàn ở bất kỳ giờ nào: push lúc 23:30 chỉ đăng ký task
+definition mới và để service nằm im ở 0; 05:00 hôm sau nó lên với image mới.
 
 ### Bật tay ngoài giờ
 
@@ -153,8 +137,22 @@ chạy liên tục.
 aws ecs update-service --cluster pdftool-cluster --service pdftool --desired-count 1
 ```
 
-Chạy được vì `MinCapacity` của scalable target là 0 (chỉ là sàn, không phải mục tiêu) và
-`MaxCapacity` là 1. Task lên sau ~90 giây và ở đó cho tới lần scheduled action kế tiếp.
+Task lên sau ~90 giây và ở đó cho tới 23:00. Không có gì kéo nó về 0 sớm hơn.
+
+### Chạy 24/7, không theo lịch
+
+Gắn tag loại trừ rồi tự đặt `desiredCount`:
+
+```powershell
+$arn = aws ecs describe-services --cluster pdftool-cluster --services pdftool `
+  --query 'services[0].serviceArn' --output text
+aws ecs tag-resource --resource-arn $arn --tags key=scheduler:exclude,value=true
+aws ecs update-service --cluster pdftool-cluster --service pdftool --desired-count 1
+```
+
+Template khai sẵn tag `scheduler:exclude = false` trên ECS service. Về mặt chức năng nó không
+làm gì (Lambda chỉ bỏ qua khi giá trị là `true`) — nó ở đó để người đọc template sau này biết
+việc tắt đêm là cố ý, và biết đúng một chữ cần đổi để thoát ra.
 
 ---
 
@@ -164,8 +162,8 @@ Chạy được vì `MinCapacity` của scalable target là 0 (chỉ là sàn, k
 
 | Khoản | Ước tính / tháng |
 |---|---|
-| Fargate on-demand, lịch 07:00–20:00 mọi ngày (~395 h) | ~6 USD |
-| — nếu `ScheduleState=DISABLED` (24/7, 730 h) | ~11 USD |
+| Fargate on-demand, lịch 05:00–23:00 mọi ngày (~547 h) | ~8 USD |
+| — nếu gắn `scheduler:exclude=true` để chạy 24/7 (730 h) | ~11 USD |
 | — nếu đổi sang `CapacityProvider=FARGATE_SPOT` | rẻ hơn ~70%, nhưng xem cảnh báo dưới |
 | ECR storage (10 image) | ~0,2 USD |
 | CloudWatch Logs (`/ecs/pdftool`, giữ 14 ngày) | dưới 0,5 USD |
@@ -177,7 +175,7 @@ giữa hai kiến trúc chỉ khoảng 4–5 USD/tháng, đổi lấy việc m�
 
 **Về `FARGATE_SPOT`:** rẻ hơn nhiều nhưng AWS thu hồi task với 2 phút báo trước, và trên service
 1 task đó là ~90 giây gián đoạn vào một thời điểm không đoán trước — đúng kiểu chờ mà cả thiết kế
-này sinh ra để tránh. Chỉ chọn Spot nếu đồng thời nâng `TaskCount` lên 2 trở lên.
+này sinh ra để tránh. Chỉ chọn Spot nếu đồng thời nâng `desiredCount` lên 2 trở lên.
 
 ---
 
@@ -257,15 +255,13 @@ cho tới khi pipeline chạy xong (~15–25 phút).
   `bind() to 0.0.0.0:80 failed (13: Permission denied)`.
 - **ECR repo IMMUTABLE** → không có tag `latest`, và push lại cùng tag sẽ lỗi. Buildspec đã bỏ
   qua bước build khi tag đã tồn tại.
-- **Đừng khai báo `DesiredCount` trên ECS service.** Scalable target sở hữu con số đó. Khai báo
-  cả hai nơi là mỗi lần deploy CloudFormation lại kéo service về `DesiredCount` của template,
-  ghi đè lịch — và triệu chứng chỉ hiện ra khi deploy trúng lúc ngoài giờ.
-- **`CfnDeployRole` giữ `iam:CreateServiceLinkedRole` dù hiện không cần.** Scalable target ECS
-  đầu tiên trong một tài khoản tạo ra `AWSServiceRoleForApplicationAutoScaling_ECSService`. Trong
-  `474082330515` role đó đã có sẵn (`aev-prod-ecs-service-adminsite`, `-api`, `-chat-service` và
-  `ad-manager-service` đều đang dùng auto scaling), nên câu lệnh đó là no-op. Giữ lại để template
-  còn chạy được ở tài khoản trắng, thay vì hỏng ngay deploy đầu tiên với `AccessDenied` ở một lời
-  gọi không ai ngờ tới.
+- **Đừng khai báo `DesiredCount` trên ECS service.** `aev-global-prod-ecs-scheduler-fn` sở hữu
+  con số đó. Khai báo ở template nữa là mỗi lần deploy CloudFormation lại kéo service về giá trị
+  của template, ghi đè lịch — và triệu chứng chỉ hiện ra khi deploy trúng lúc ngoài giờ.
+- **Đừng tự khai scheduled action cho service này.** `aev-global-prod-ecs-scheduler-fn` gọi
+  `RegisterScalableTarget` với `ScheduledScalingSuspended=true` lúc 23:00, tức là đình chỉ luôn
+  mọi scheduled action của service. Lịch riêng viết trong repo sẽ im lặng ngừng chạy, và không có
+  thông báo lỗi nào.
 - **Health check không còn ràng buộc với gì cả.** Ở bản cũ, `wget` vào `127.0.0.1` mỗi 30 giây
   tự sinh access log và làm hỏng tín hiệu idle — phải lọc `-"127.0.0.1"` ở metric filter. Lịch
-  không đọc log, nên giờ health check chỉ là health check, sửa thoải mái.
+  chung không đọc log, nên giờ health check chỉ là health check, sửa thoải mái.

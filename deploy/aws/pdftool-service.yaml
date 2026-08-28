@@ -1,13 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
-  AEV PDF Tool - service stack. Task definition, Cloud Map registration, the ECS service, and
-  the scheduled start/stop that keeps it running only during working hours. This is the only
-  stack CodePipeline touches: its Deploy stage runs a CloudFormation CREATE_UPDATE here with
-  the new ImageTag. Everything else is pulled from pdftool-platform through Fn::ImportValue,
-  so the pipeline never has to pass it.
+  AEV PDF Tool - service stack. Task definition, Cloud Map registration and the ECS service.
+  This is the only stack CodePipeline touches: its Deploy stage runs a CloudFormation
+  CREATE_UPDATE here with the new ImageTag. Everything else is pulled from pdftool-platform
+  through Fn::ImportValue, so the pipeline never has to pass it.
 
 # =============================================================================
-# NO SCALE-TO-ZERO. A FIXED SCHEDULE INSTEAD.
+# NO SCALE-TO-ZERO, AND NO PRIVATE SCHEDULE EITHER
 #
 # An earlier revision let the service sleep after 30 idle minutes and woke it from a DNS query.
 # It worked, and it was measured: the first request after a sleep ALWAYS failed, and the user
@@ -15,19 +14,27 @@ Description: >-
 # mid-task, so demand-driven wake-up is gone - along with its two Lambdas, its idle alarm, its
 # Route 53 Resolver query logging and the Cloudflare wake worker.
 #
-# What replaces it is a plain timetable: the service is up from ScaleUpSchedule to
-# ScaleDownSchedule and down the rest of the time. Inside working hours a user never waits;
-# outside them nothing runs and nothing is billed. The failure mode is predictable rather than
-# random - "it is outside working hours" is something a person can understand and work around,
-# unlike "the first click always fails".
+# The obvious replacement was a pair of Application Auto Scaling scheduled actions on this
+# stack. That is NOT what this template does, because account 474082330515 already runs exactly
+# that mechanism account-wide:
 #
-# It is implemented with Application Auto Scaling scheduled actions, not with Lambda +
-# EventBridge like the old design. Two declarative cron entries on a scalable target do the
-# whole job: no function code, no IAM role, no log group, nothing to go stale.
+#   aev-global-prod-ecs-scheduler-start  cron(0 5 * * ? *)   Asia/Bangkok
+#   aev-global-prod-ecs-scheduler-stop   cron(0 23 * * ? *)  Asia/Bangkok
+#        -> lambda aev-global-prod-ecs-scheduler-fn
+#
+# That Lambda walks EVERY cluster and EVERY service in the account, so pdftool-cluster is
+# covered the moment it exists - nothing here has to opt in. At 23:00 it records the current
+# desiredCount in the tag scheduler:previousDesiredCount and sets desiredCount to 0; at 05:00
+# it restores that value (defaulting to 1). Services tagged scheduler:exclude=true are skipped.
+#
+# So the service runs 05:00-23:00 every day including weekends, on the same timetable as the
+# rest of production, with zero resources declared here. Adding scheduled actions of our own
+# would actively fight it: the same Lambda calls RegisterScalableTarget with
+# ScheduledScalingSuspended=true at 23:00, which suspends any scheduled action this stack owns.
 #
 # WHO OWNS desiredCount
 #
-# The scalable target does - exclusively. That is why the ECS service below deliberately does
+# The global scheduler does - exclusively. That is why the ECS service below deliberately does
 # NOT declare DesiredCount. Behaviour verified on this stack on 2026-08-26, not guessed from
 # documentation:
 #   - On CREATE, CloudFormation uses 1 (not the ECS API default of 0), so a task is running
@@ -35,9 +42,13 @@ Description: >-
 #   - On UPDATE, CloudFormation does not touch desiredCount at all. Verified by taking the
 #     service to 0, updating the stack to change TaskMemory, and watching the task definition
 #     go to a new revision while desiredCount stayed 0.
-# That second property is what makes a deploy safe at any hour: pushing at 22:00 registers the
-# new task definition and leaves the service at 0, and the next morning's scheduled start
-# brings it up on the new image.
+# That second property is what makes a deploy safe at any hour: pushing at 23:30 registers the
+# new task definition and leaves the service at 0, and the 05:00 restore brings it up on the
+# new image.
+#
+# TO OPT OUT and run 24/7, tag the service scheduler:exclude=true and set desiredCount by hand:
+#   aws ecs tag-resource --resource-arn <service-arn> --tags key=scheduler:exclude,value=true
+#   aws ecs update-service --cluster pdftool-cluster --service pdftool --desired-count 1
 # =============================================================================
 
 Parameters:
@@ -61,16 +72,6 @@ Parameters:
       The single stack this one imports from: ECR repository, log group, both IAM roles, ECS
       cluster and the task security group.
 
-  TaskCount:
-    Type: Number
-    Default: 1
-    MinValue: 1
-    MaxValue: 4
-    Description: >-
-      Tasks to run while the service is up. 1 is enough - the server only ships static files,
-      all PDF work happens as WASM in the user's browser. Raise it to 2 if you want the service
-      to survive losing a single Availability Zone, or if you switch to FARGATE_SPOT.
-
   CapacityProvider:
     Type: String
     Default: FARGATE
@@ -79,45 +80,7 @@ Parameters:
       FARGATE (on-demand) by default. FARGATE_SPOT is roughly 70% cheaper but AWS can reclaim
       the task on two minutes' notice, and on a single-task service that is a ~90 second outage
       at an unpredictable moment - exactly the kind of wait this design exists to avoid. Only
-      choose FARGATE_SPOT together with TaskCount 2 or more.
-
-  # ---------------------------------------------------------------- schedule
-
-  ScheduleState:
-    Type: String
-    Default: ENABLED
-    AllowedValues: [ENABLED, DISABLED]
-    Description: >-
-      ENABLED: the service follows ScaleUpSchedule / ScaleDownSchedule below.
-      DISABLED: the scheduled actions are removed and the scalable target pins the service at
-      TaskCount, i.e. it runs 24/7. Switch to DISABLED if the timetable turns out to get in
-      people's way more than the bill justifies.
-
-  ScaleUpSchedule:
-    Type: String
-    Default: cron(0 7 ? * * *)
-    Description: >-
-      When the service comes up, in Application Auto Scaling cron syntax (six fields:
-      minute hour day-of-month month day-of-week year). Default: 07:00 every day.
-      Every day rather than MON-FRI on purpose - a weekday-only schedule means the site is
-      simply dead on a Saturday, with no wake-up path left to rescue it. Narrow it to
-      "cron(0 7 ? * MON-SAT *)" or "cron(0 7 ? * MON-FRI *)" if you would rather save more and
-      accept that.
-
-  ScaleDownSchedule:
-    Type: String
-    Default: cron(0 20 ? * * *)
-    Description: >-
-      When the service goes down. Default: 20:00 every day, giving a 13-hour window and cutting
-      the compute bill roughly in half. In-flight work is unaffected: everything happens in the
-      browser, so stopping the task loses nothing a user has open.
-
-  ScheduleTimezone:
-    Type: String
-    Default: Asia/Ho_Chi_Minh
-    Description: >-
-      IANA timezone the two crons are read in. Set explicitly so the schedule does not drift
-      relative to office hours the way a UTC cron would.
+      choose FARGATE_SPOT if you also raise desiredCount to 2 or more.
 
   # ---------------------------------------------------------------- placement
 
@@ -148,9 +111,6 @@ Parameters:
     Type: String
     Default: '512'
     AllowedValues: ['512', '1024', '2048']
-
-Conditions:
-  ScheduleEnabled: !Equals [!Ref ScheduleState, ENABLED]
 
 Resources:
   TaskDefinition:
@@ -233,7 +193,8 @@ Resources:
       Cluster: !ImportValue
         Fn::Sub: "${PlatformStackName}-ClusterName"
       TaskDefinition: !Ref TaskDefinition
-      # DesiredCount is deliberately absent - the scalable target below owns it. See the header.
+      # DesiredCount is deliberately absent - aev-global-prod-ecs-scheduler-fn owns it, moving
+      # it to 0 at 23:00 and back at 05:00. See the header.
       CapacityProviderStrategy:
         - CapacityProvider: !Ref CapacityProvider
           Weight: 1
@@ -261,50 +222,18 @@ Resources:
           Rollback: true
       EnableECSManagedTags: true
       PropagateTags: SERVICE
-
-  # ===========================================================================
-  # Scheduled start/stop
-  # ===========================================================================
-  #
-  # No RoleARN: for the ecs namespace Application Auto Scaling uses its own service-linked role
-  # (AWSServiceRoleForApplicationAutoScaling_ECSService) and creates it on first use.
-  #
-  # MinCapacity 0 while the schedule is on is what allows the evening action to reach 0 at all -
-  # a scalable target can never go below its registered minimum. The scheduled actions then move
-  # that minimum up and down; the target's own value here is only the floor of what they may set.
-  #
-  # Note the ordering with a stack update: CloudFormation re-applies MinCapacity/MaxCapacity from
-  # this template on every deploy, but neither value forces a change on its own (a lowered
-  # minimum does not scale in, a raised maximum does not scale out). So a mid-day deploy leaves a
-  # running service running, and a midnight deploy leaves a stopped service stopped. The next
-  # scheduled action is what actually moves it.
-  ScalableTarget:
-    Type: AWS::ApplicationAutoScaling::ScalableTarget
-    DependsOn: ECSService
-    Properties:
-      ServiceNamespace: ecs
-      ScalableDimension: ecs:service:DesiredCount
-      ResourceId: !Sub
-        - "service/${Cluster}/${ServiceName}"
-        - Cluster: !ImportValue
-            Fn::Sub: "${PlatformStackName}-ClusterName"
-      MinCapacity: !If [ScheduleEnabled, 0, !Ref TaskCount]
-      MaxCapacity: !Ref TaskCount
-      ScheduledActions: !If
-        - ScheduleEnabled
-        - - ScheduledActionName: !Sub "${ServiceName}-start"
-            Schedule: !Ref ScaleUpSchedule
-            Timezone: !Ref ScheduleTimezone
-            ScalableTargetAction:
-              MinCapacity: !Ref TaskCount
-              MaxCapacity: !Ref TaskCount
-          - ScheduledActionName: !Sub "${ServiceName}-stop"
-            Schedule: !Ref ScaleDownSchedule
-            Timezone: !Ref ScheduleTimezone
-            ScalableTargetAction:
-              MinCapacity: 0
-              MaxCapacity: 0
-        - !Ref AWS::NoValue
+      # Explicit opt-in marker for aev-global-prod-ecs-scheduler-fn. The Lambda only skips a
+      # service when this tag reads "true", so declaring "false" changes nothing functionally -
+      # it is here so the next person reading this template knows the nightly stop is deliberate
+      # and knows the one word to change to get out of it.
+      #
+      # The Lambda also writes scheduler:previousDesiredCount on this service at 23:00. That tag
+      # is not declared here, so a stack update landing between 23:00 and 05:00 may strip it; the
+      # only consequence is that the 05:00 restore falls back to its default of 1, which is the
+      # value we want anyway.
+      Tags:
+        - Key: scheduler:exclude
+          Value: 'false'
 
 Outputs:
   ServiceName:
@@ -320,8 +249,7 @@ Outputs:
     Description: The address to hand to users.
     Value: !Sub "http://${CloudMapServiceName}.internal.aquavietnam.vn"
   ScheduleSummary:
-    Description: The timetable in force, or a note that the service runs continuously.
-    Value: !If
-      - ScheduleEnabled
-      - !Sub "up ${ScaleUpSchedule} / down ${ScaleDownSchedule} (${ScheduleTimezone})"
-      - !Sub "schedule disabled - running ${TaskCount} task(s) 24/7"
+    Description: Where the on/off timetable actually lives - not in this stack.
+    Value: >-
+      up 05:00 / down 23:00 Asia/Bangkok, every day, driven account-wide by
+      aev-global-prod-ecs-scheduler-start|stop -> aev-global-prod-ecs-scheduler-fn
