@@ -1,103 +1,364 @@
 import forge from 'node-forge';
-import { ExtractedSignature, SignatureValidationResult } from '@/types';
+import { SignatureValidationResult } from '@/types';
+import type { ExtractedSignatureWithError, PdfValueSpan } from '@/types';
+
+import { trText } from '../i18n/i18n.js';
 
 const INSECURE_DIGEST_OIDS = new Set<string>([
   '1.2.840.113549.2.5',
   '1.3.14.3.2.26',
 ]);
 
-export function extractSignatures(pdfBytes: Uint8Array): ExtractedSignature[] {
-  const signatures: ExtractedSignature[] = [];
+const MIN_RSA_EXPONENT = new forge.jsbn.BigInteger('65537');
+
+const TST_INFO_OID = '1.2.840.113549.1.9.16.1.4';
+
+const PDF_WHITESPACE = new Set('\0\t\n\f\r ');
+const PDF_TOKEN_TERMINATORS = new Set('\0\t\n\f\r ()<>[]{}/%');
+const PDF_STRING_ESCAPES: Record<string, string> = {
+  n: '\n',
+  r: '\r',
+  t: '\t',
+  b: '\b',
+  f: '\f',
+  '\r\n': '',
+  '\r': '',
+  '\n': '',
+};
+
+export function extractSignatures(
+  pdfBytes: Uint8Array
+): ExtractedSignatureWithError[] {
+  const signatures: ExtractedSignatureWithError[] = [];
   const pdfString = new TextDecoder('latin1').decode(pdfBytes);
 
-  // Find all signature objects for /Type /Sig
-  const sigRegex = /\/Type\s*\/Sig\b/g;
-  let sigMatch;
-  let sigIndex = 0;
+  // Find all signature dictionaries (see isSignatureDictionary)
+  const objectHeader = /\d+\s+\d+\s+obj\b/g;
+  let endobj = -1;
 
-  while ((sigMatch = sigRegex.exec(pdfString)) !== null) {
-    try {
-      const searchStart = Math.max(0, sigMatch.index - 5000);
-      const searchEnd = Math.min(pdfString.length, sigMatch.index + 10000);
-      const context = pdfString.substring(searchStart, searchEnd);
-      const byteRangeMatch = context.match(
-        /\/ByteRange\s*\[\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*\]/
-      );
-      if (!byteRangeMatch) continue;
+  while (objectHeader.exec(pdfString) !== null) {
+    const start = objectHeader.lastIndex;
+    if (endobj < start) {
+      endobj = pdfString.indexOf('endobj', start);
+      if (endobj < 0) endobj = pdfString.length;
+    }
+    const body = pdfString.slice(0, endobj);
+    const dictionaries: Map<string, PdfValueSpan>[] = [];
+    const end = parsePdfValue(
+      body,
+      skipPdfWhitespace(body, start),
+      dictionaries,
+      0
+    );
+    objectHeader.lastIndex = end < 0 ? endobj : end;
+    if (end < 0) continue;
 
-      const byteRange = [
-        parseInt(byteRangeMatch[1], 10),
-        parseInt(byteRangeMatch[2], 10),
-        parseInt(byteRangeMatch[3], 10),
-        parseInt(byteRangeMatch[4], 10),
-      ];
-
-      const contentsMatch = context.match(/\/Contents\s*<([0-9A-Fa-f]+)>/);
-      if (!contentsMatch) continue;
-
-      const hexContents = contentsMatch[1];
-      const contentsBytes = hexToBytes(hexContents);
-
-      const reasonMatch = context.match(/\/Reason\s*\(([^)]*)\)/);
-      const locationMatch = context.match(/\/Location\s*\(([^)]*)\)/);
-      const contactMatch = context.match(/\/ContactInfo\s*\(([^)]*)\)/);
-      const nameMatch = context.match(/\/Name\s*\(([^)]*)\)/);
-      const timeMatch = context.match(
-        /\/M\s*\(D:(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/
-      );
-
-      let signingTime: string | undefined;
-      if (timeMatch) {
-        signingTime = `${timeMatch[1]}-${timeMatch[2]}-${timeMatch[3]}T${timeMatch[4]}:${timeMatch[5]}:${timeMatch[6]}`;
+    for (const entries of dictionaries) {
+      const kind = getSignatureKind(pdfString, entries);
+      if (kind) {
+        signatures.push(
+          readSignatureDictionary(
+            pdfString,
+            pdfBytes,
+            entries,
+            signatures.length,
+            kind === 'timestamp'
+          )
+        );
       }
-
-      signatures.push({
-        index: sigIndex++,
-        contents: contentsBytes,
-        byteRange,
-        reason: reasonMatch
-          ? decodeURIComponent(escape(reasonMatch[1]))
-          : undefined,
-        location: locationMatch
-          ? decodeURIComponent(escape(locationMatch[1]))
-          : undefined,
-        contactInfo: contactMatch
-          ? decodeURIComponent(escape(contactMatch[1]))
-          : undefined,
-        name: nameMatch ? decodeURIComponent(escape(nameMatch[1])) : undefined,
-        signingTime,
-      });
-    } catch (e) {
-      console.warn('Error extracting signature at index', sigIndex, e);
     }
   }
 
   return signatures;
 }
 
+/**
+ * /Type is optional in a signature dictionary (PDF 32000-1, 12.8.1, Table
+ * 252), and some signers leave it out, so a dictionary without /Type that
+ * carries both /ByteRange and /Contents is a signature too. Document
+ * timestamps (/Type /DocTimeStamp, /SubFilter /ETSI.RFC3161, ISO 32000-2,
+ * 12.8.5) hold an RFC 3161 token instead of a CMS signature over the
+ * document, so they are reported separately and verified differently.
+ */
+function getSignatureKind(
+  pdfString: string,
+  entries: Map<string, PdfValueSpan>
+): 'signature' | 'timestamp' | null {
+  const name = (key: string) => {
+    const span = entries.get(key);
+    return span ? pdfString.slice(span.start, span.end) : undefined;
+  };
+  const type = name('Type');
+  if (type === '/DocTimeStamp') return 'timestamp';
+  if (type !== undefined) return type === '/Sig' ? 'signature' : null;
+  if (!entries.has('ByteRange') || !entries.has('Contents')) return null;
+  return name('SubFilter') === '/ETSI.RFC3161' ? 'timestamp' : 'signature';
+}
+
+function readSignatureDictionary(
+  pdfString: string,
+  pdfBytes: Uint8Array,
+  entries: Map<string, PdfValueSpan>,
+  index: number,
+  isTimestamp: boolean
+): ExtractedSignatureWithError {
+  const text = (key: string) => decodePdfText(pdfBytes, entries.get(key));
+  // A PDF processor should ignore these on ETSI.RFC3161 dictionaries (ISO
+  // 32000-2, Table 255)
+  const signerText = (key: string) => (isTimestamp ? undefined : text(key));
+  const timeMatch = text('M')?.match(
+    /^D:(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/
+  );
+  const signature: ExtractedSignatureWithError = {
+    index,
+    contents: new Uint8Array(0),
+    byteRange: [],
+    reason: signerText('Reason'),
+    location: signerText('Location'),
+    contactInfo: signerText('ContactInfo'),
+    name: signerText('Name'),
+    signingTime: timeMatch
+      ? `${timeMatch[1]}-${timeMatch[2]}-${timeMatch[3]}T${timeMatch[4]}:${timeMatch[5]}:${timeMatch[6]}`
+      : undefined,
+    isTimestamp,
+  };
+
+  const rangeSpan = entries.get('ByteRange');
+  const rangeMatch = rangeSpan
+    ? /^\[\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*\]$/.exec(
+        pdfString.slice(rangeSpan.start, rangeSpan.end)
+      )
+    : null;
+  if (!rangeMatch) {
+    signature.extractionError = trText(
+      'Signature has a missing or malformed /ByteRange'
+    );
+    return signature;
+  }
+
+  signature.byteRange = rangeMatch.slice(1).map(Number);
+  const byteRangeError = getByteRangeError(
+    signature.byteRange,
+    pdfBytes.length
+  );
+  if (byteRangeError) {
+    signature.extractionError = byteRangeError;
+    return signature;
+  }
+
+  const gapStart = signature.byteRange[0] + signature.byteRange[1];
+  const gapEnd = signature.byteRange[2];
+  const gap = pdfString.slice(gapStart, gapEnd);
+  if (gap.length % 2 !== 0 || !/^<[0-9A-Fa-f]+>$/.test(gap)) {
+    signature.extractionError = trText(
+      'The bytes excluded by /ByteRange are not exactly a hex-encoded signature'
+    );
+    return signature;
+  }
+
+  const contentsSpan = entries.get('Contents');
+  if (contentsSpan?.start !== gapStart || contentsSpan.end !== gapEnd) {
+    signature.extractionError = trText(
+      'The bytes excluded by /ByteRange are not the /Contents of this signature'
+    );
+    return signature;
+  }
+
+  const contents = hexToBytes(gap.slice(1, -1));
+  const derObjectLength = getDerObjectLength(contents);
+  if (
+    derObjectLength === null ||
+    derObjectLength > contents.length ||
+    contents.subarray(derObjectLength).some((byte) => byte !== 0)
+  ) {
+    signature.extractionError = trText(
+      'Signature /Contents is not a single DER object followed by zero padding'
+    );
+    return signature;
+  }
+
+  signature.contents = contents.slice(0, derObjectLength);
+  return signature;
+}
+
+function getByteRangeError(
+  byteRange: number[],
+  fileLength: number
+): string | null {
+  if (
+    byteRange.length !== 4 ||
+    !byteRange.every((value) => Number.isSafeInteger(value) && value >= 0)
+  ) {
+    return trText('Malformed ByteRange');
+  }
+  const [start1, len1, start2, len2] = byteRange;
+  if (start1 !== 0) {
+    return trText('ByteRange does not start at the beginning of the file');
+  }
+  if (start1 + len1 > start2 || start2 + len2 > fileLength) {
+    return trText('ByteRange out of bounds');
+  }
+  return null;
+}
+
+function skipPdfWhitespace(text: string, pos: number): number {
+  while (pos < text.length) {
+    if (text[pos] === '%') {
+      while (pos < text.length && text[pos] !== '\n' && text[pos] !== '\r') {
+        pos++;
+      }
+    } else if (PDF_WHITESPACE.has(text[pos])) {
+      pos++;
+    } else {
+      break;
+    }
+  }
+  return pos;
+}
+
+function findTokenEnd(text: string, pos: number): number {
+  while (pos < text.length && !PDF_TOKEN_TERMINATORS.has(text[pos])) pos++;
+  return pos;
+}
+
+function findLiteralStringEnd(text: string, start: number): number {
+  let depth = 0;
+  for (let pos = start; pos < text.length; pos++) {
+    if (text[pos] === '\\') {
+      pos++;
+    } else if (text[pos] === '(') {
+      depth++;
+    } else if (text[pos] === ')') {
+      depth--;
+      if (depth === 0) return pos + 1;
+    }
+  }
+  return -1;
+}
+
+function parsePdfValue(
+  text: string,
+  start: number,
+  dictionaries: Map<string, PdfValueSpan>[],
+  depth: number
+): number {
+  if (depth > 32 || start >= text.length) return -1;
+
+  if (text.startsWith('<<', start)) {
+    const entries = new Map<string, PdfValueSpan>();
+    dictionaries.push(entries);
+    let pos = skipPdfWhitespace(text, start + 2);
+    while (!text.startsWith('>>', pos)) {
+      const keyEnd = text[pos] === '/' ? findTokenEnd(text, pos + 1) : pos;
+      const valueStart = skipPdfWhitespace(text, keyEnd);
+      const valueEnd = parsePdfValue(text, valueStart, dictionaries, depth + 1);
+      if (valueEnd < 0) return -1;
+      if (keyEnd > pos) {
+        entries.set(text.slice(pos + 1, keyEnd), {
+          start: valueStart,
+          end: valueEnd,
+        });
+      }
+      pos = skipPdfWhitespace(text, valueEnd);
+    }
+    return pos + 2;
+  }
+
+  if (text[start] === '<') {
+    const end = text.indexOf('>', start);
+    return end < 0 ? -1 : end + 1;
+  }
+
+  if (text[start] === '(') return findLiteralStringEnd(text, start);
+
+  if (text[start] === '[') {
+    let pos = skipPdfWhitespace(text, start + 1);
+    while (text[pos] !== ']') {
+      const end = parsePdfValue(text, pos, dictionaries, depth + 1);
+      if (end < 0) return -1;
+      pos = skipPdfWhitespace(text, end);
+    }
+    return pos + 1;
+  }
+
+  const end = findTokenEnd(text, text[start] === '/' ? start + 1 : start);
+  return end > start ? end : -1;
+}
+
+function decodePdfText(
+  pdfBytes: Uint8Array,
+  span: PdfValueSpan | undefined
+): string | undefined {
+  if (!span) return undefined;
+  const raw = uint8ToLatin1(pdfBytes.subarray(span.start, span.end));
+  let text: string;
+  if (raw.startsWith('(')) {
+    text = raw
+      .slice(1, -1)
+      .replace(/\\([0-7]{1,3}|\r\n|[\s\S])/g, (_, escaped: string) =>
+        /^[0-7]/.test(escaped)
+          ? String.fromCharCode(parseInt(escaped, 8) & 0xff)
+          : (PDF_STRING_ESCAPES[escaped] ?? escaped)
+      );
+  } else if (/^<[0-9A-Fa-f\s]*>$/.test(raw)) {
+    const hex = raw.slice(1, -1).replace(/\s/g, '');
+    text = uint8ToLatin1(hexToBytes(hex.length % 2 ? hex + '0' : hex));
+  } else {
+    return undefined;
+  }
+
+  const bytes = latin1ToUint8(text);
+  if (text.startsWith('\xfe\xff')) {
+    return new TextDecoder('utf-16be').decode(bytes.subarray(2));
+  }
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return text;
+  }
+}
+
+function getDerObjectLength(bytes: Uint8Array): number | null {
+  if (bytes.length < 2) return null;
+  if (bytes[1] < 0x80) return 2 + bytes[1];
+  const count = bytes[1] & 0x7f;
+  if (count === 0 || count > 4 || bytes.length < 2 + count) return null;
+  let length = 0;
+  for (let i = 0; i < count; i++) length = length * 256 + bytes[2 + i];
+  return 2 + count + length;
+}
+
 export async function validateSignature(
-  signature: ExtractedSignature,
+  signature: ExtractedSignatureWithError,
   pdfBytes: Uint8Array,
   trustedCert?: forge.pki.Certificate
 ): Promise<SignatureValidationResult> {
   const result: SignatureValidationResult = {
     signatureIndex: signature.index,
     isValid: false,
-    signerName: 'Unknown',
-    issuer: 'Unknown',
+    signerName: trText('Unknown'),
+    issuer: trText('Unknown'),
     validFrom: new Date(0),
     validTo: new Date(0),
     isExpired: false,
     isSelfSigned: false,
     isTrusted: false,
-    algorithms: { digest: 'Unknown', signature: 'Unknown' },
+    algorithms: { digest: trText('Unknown'), signature: trText('Unknown') },
     serialNumber: '',
     byteRange: signature.byteRange,
     coverageStatus: 'unknown',
     reason: signature.reason,
     location: signature.location,
     contactInfo: signature.contactInfo,
+    isTimestamp: signature.isTimestamp,
   };
+
+  if (signature.extractionError) {
+    result.errorMessage = signature.extractionError;
+    result.cryptoVerified = false;
+    result.cryptoVerificationStatus = 'failed';
+    return result;
+  }
 
   try {
     const binaryString = String.fromCharCode.apply(
@@ -105,6 +366,13 @@ export async function validateSignature(
       Array.from(signature.contents)
     );
     const asn1 = forge.asn1.fromDer(binaryString);
+    const timestamp = signature.isTimestamp ? unwrapTimestampToken(asn1) : null;
+    if (signature.isTimestamp && !timestamp) {
+      result.errorMessage = trText('Could not read the timestamp token');
+      result.cryptoVerified = false;
+      result.cryptoVerificationStatus = 'failed';
+      return result;
+    }
     const p7 = forge.pkcs7.messageFromAsn1(
       asn1
     ) as forge.pkcs7.PkcsSignedData & {
@@ -113,15 +381,26 @@ export async function validateSignature(
         authenticatedAttributes?: forge.asn1.Asn1[];
         signature?: string;
         signatureAlgorithm?: forge.asn1.Asn1[];
+        issuer?: forge.asn1.Asn1;
+        serial?: string;
       };
     };
 
     if (!p7.certificates || p7.certificates.length === 0) {
-      result.errorMessage = 'No certificates found in signature';
+      result.errorMessage = trText('No certificates found in signature');
       return result;
     }
 
-    const signerCert = p7.certificates[0] as forge.pki.Certificate;
+    const certificates = p7.certificates as forge.pki.Certificate[];
+    const signerCert = findSignerCertificate(
+      certificates,
+      p7.rawCapture?.issuer,
+      p7.rawCapture?.serial
+    );
+    if (!signerCert) {
+      result.errorMessage = trText('Could not parse signer info');
+      return result;
+    }
 
     const subjectCN = signerCert.subject.getField('CN');
     const subjectO = signerCert.subject.getField('O');
@@ -131,10 +410,10 @@ export async function validateSignature(
     const issuerCN = signerCert.issuer.getField('CN');
     const issuerO = signerCert.issuer.getField('O');
 
-    result.signerName = (subjectCN?.value as string) ?? 'Unknown';
+    result.signerName = (subjectCN?.value as string) ?? trText('Unknown');
     result.signerOrg = subjectO?.value as string | undefined;
     result.signerEmail = subjectE?.value as string | undefined;
-    result.issuer = (issuerCN?.value as string) ?? 'Unknown';
+    result.issuer = (issuerCN?.value as string) ?? trText('Unknown');
     result.issuerOrg = issuerO?.value as string | undefined;
     result.validFrom = signerCert.validity.notBefore;
     result.validTo = signerCert.validity.notAfter;
@@ -148,27 +427,11 @@ export async function validateSignature(
     // Check trust against provided certificate (cryptographic, not name/serial match)
     if (trustedCert) {
       try {
-        const trustedPem = forge.pki.certificateToPem(trustedCert);
-        const isSameCert =
-          forge.pki.certificateToPem(signerCert) === trustedPem;
-
-        let cryptoIssued = false;
-        const chain = [
+        result.isTrusted = chainsToTrustedCert(
           signerCert,
-          ...(p7.certificates as forge.pki.Certificate[]),
-        ];
-        for (const cert of chain) {
-          try {
-            if (trustedCert.verify(cert)) {
-              cryptoIssued = true;
-              break;
-            }
-          } catch {
-            continue;
-          }
-        }
-
-        result.isTrusted = isSameCert || cryptoIssued;
+          certificates,
+          trustedCert
+        );
       } catch {
         result.isTrusted = false;
       }
@@ -182,14 +445,22 @@ export async function validateSignature(
         (digestOid && getDigestAlgorithmName(digestOid)) ||
         getDigestAlgorithmName(signerCert.siginfo?.algorithmOid || ''),
       signature: getSignatureAlgorithmName(signerCert.signatureOid || ''),
+      imprint: timestamp
+        ? getDigestAlgorithmName(timestamp.imprintOid)
+        : undefined,
     };
 
     if (digestOid && INSECURE_DIGEST_OIDS.has(digestOid)) {
       result.usesInsecureDigest = true;
     }
+    if (timestamp && INSECURE_DIGEST_OIDS.has(timestamp.imprintOid)) {
+      result.usesInsecureDigest = true;
+    }
 
     // Parse signing time if available in signature
-    if (signature.signingTime) {
+    if (timestamp?.genTime) {
+      result.signatureDate = timestamp.genTime;
+    } else if (signature.signingTime) {
       result.signatureDate = new Date(signature.signingTime);
     } else {
       try {
@@ -243,7 +514,8 @@ export async function validateSignature(
       pdfBytes,
       signature.byteRange,
       signerCert,
-      signerInfoFields
+      signerInfoFields,
+      timestamp
     );
 
     result.cryptoVerified = verification.status === 'verified';
@@ -252,7 +524,7 @@ export async function validateSignature(
       result.unsupportedAlgorithmReason = verification.reason;
     } else if (verification.status === 'failed') {
       result.errorMessage =
-        verification.reason || 'Cryptographic verification failed';
+        verification.reason || trText('Cryptographic verification failed');
     }
 
     result.isValid =
@@ -261,10 +533,80 @@ export async function validateSignature(
       !result.usesInsecureDigest;
   } catch (e) {
     result.errorMessage =
-      e instanceof Error ? e.message : 'Failed to parse signature';
+      e instanceof Error ? e.message : trText('Failed to parse signature');
   }
 
   return result;
+}
+
+function findSignerCertificate(
+  certificates: forge.pki.Certificate[],
+  issuer: forge.asn1.Asn1 | undefined,
+  serial: string | undefined
+): forge.pki.Certificate | null {
+  if (issuer && serial) {
+    const serialHex = forge.util.createBuffer(serial).toHex();
+    const issuerDer = forge.asn1.toDer(issuer).getBytes();
+    const match = certificates.find(
+      (cert) =>
+        cert.serialNumber === serialHex &&
+        forge.asn1
+          .toDer(forge.pki.distinguishedNameToAsn1(cert.issuer))
+          .getBytes() === issuerDer
+    );
+    return match ?? null;
+  }
+  return certificates[0];
+}
+
+function hasLowRsaExponent(key: unknown): boolean {
+  const exponent = (key as Partial<forge.pki.rsa.PublicKey> | undefined)?.e;
+  return !!exponent && exponent.compareTo(MIN_RSA_EXPONENT) < 0;
+}
+
+function isIssuedBy(
+  issuer: forge.pki.Certificate,
+  child: forge.pki.Certificate
+): boolean {
+  if (hasLowRsaExponent(issuer.publicKey)) return false;
+  try {
+    return issuer.verify(child);
+  } catch {
+    return false;
+  }
+}
+
+function isCertificateAuthority(cert: forge.pki.Certificate): boolean {
+  const basicConstraints = cert.getExtension('basicConstraints') as
+    | { cA?: boolean }
+    | undefined;
+  return basicConstraints?.cA === true;
+}
+
+function chainsToTrustedCert(
+  signerCert: forge.pki.Certificate,
+  certificates: forge.pki.Certificate[],
+  trustedCert: forge.pki.Certificate
+): boolean {
+  const trustedPem = forge.pki.certificateToPem(trustedCert);
+  const visited = new Set<string>();
+  let current = signerCert;
+
+  for (let depth = 0; depth < 10; depth++) {
+    const currentPem = forge.pki.certificateToPem(current);
+    if (currentPem === trustedPem || isIssuedBy(trustedCert, current)) {
+      return true;
+    }
+    if (visited.has(currentPem)) return false;
+    visited.add(currentPem);
+
+    const parent = certificates.find(
+      (cert) => isCertificateAuthority(cert) && isIssuedBy(cert, current)
+    );
+    if (!parent) return false;
+    current = parent;
+  }
+  return false;
 }
 
 export async function validatePdfSignatures(
@@ -286,13 +628,7 @@ function hexToBytes(hex: string): Uint8Array {
   for (let i = 0; i < hex.length; i += 2) {
     bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
   }
-
-  let actualLength = bytes.length;
-  while (actualLength > 0 && bytes[actualLength - 1] === 0) {
-    actualLength--;
-  }
-
-  return bytes.slice(0, actualLength);
+  return bytes;
 }
 
 function getDigestAlgorithmName(oid: string): string {
@@ -304,7 +640,7 @@ function getDigestAlgorithmName(oid: string): string {
     '2.16.840.1.101.3.4.2.3': 'SHA-512',
     '2.16.840.1.101.3.4.2.4': 'SHA-224',
   };
-  return digestAlgorithms[oid] || oid || 'Unknown';
+  return digestAlgorithms[oid] || oid || trText('Unknown');
 }
 
 function getSignatureAlgorithmName(oid: string): string {
@@ -320,13 +656,87 @@ function getSignatureAlgorithmName(oid: string): string {
     '1.2.840.10045.4.3.3': 'ECDSA with SHA-384',
     '1.2.840.10045.4.3.4': 'ECDSA with SHA-512',
   };
-  return signatureAlgorithms[oid] || oid || 'Unknown';
+  return signatureAlgorithms[oid] || oid || trText('Unknown');
 }
 
 interface SignerInfoFields {
   digestOid: string;
   authAttrs: forge.asn1.Asn1[] | null;
   signatureBytes: string;
+}
+
+interface TimestampToken {
+  tstInfo: Uint8Array;
+  imprintOid: string;
+  imprint: string;
+  genTime?: Date;
+}
+
+/**
+ * Reads the TSTInfo out of an RFC 3161 timestamp token and relabels its
+ * encapsulated content as id-data, because node-forge only parses SignedData
+ * that wraps plain data.
+ */
+function unwrapTimestampToken(
+  contentInfo: forge.asn1.Asn1
+): TimestampToken | null {
+  try {
+    const signedData = asn1Children(asn1Children(contentInfo)?.[1])?.[0];
+    const encapContentInfo = asn1Children(signedData)?.[2];
+    const [typeNode, explicitContent] = asn1Children(encapContentInfo) ?? [];
+    if (
+      typeNode?.type !== forge.asn1.Type.OID ||
+      forge.asn1.derToOid(typeNode.value as string) !== TST_INFO_OID
+    ) {
+      return null;
+    }
+
+    const octets = asn1Children(explicitContent)?.[0];
+    if (!octets || octets.type !== forge.asn1.Type.OCTETSTRING) return null;
+    const tstInfoDer =
+      typeof octets.value === 'string'
+        ? octets.value
+        : (octets.value as forge.asn1.Asn1[])
+            .map((chunk) => chunk.value as string)
+            .join('');
+
+    const tstInfo = asn1Children(forge.asn1.fromDer(tstInfoDer));
+    const [hashAlgorithm, hashedMessage] = asn1Children(tstInfo?.[2]) ?? [];
+    const imprintOidNode = asn1Children(hashAlgorithm)?.[0];
+    if (
+      imprintOidNode?.type !== forge.asn1.Type.OID ||
+      hashedMessage?.type !== forge.asn1.Type.OCTETSTRING ||
+      typeof hashedMessage.value !== 'string'
+    ) {
+      return null;
+    }
+
+    let genTime: Date | undefined;
+    const genTimeNode = tstInfo?.[4];
+    if (
+      genTimeNode?.type === forge.asn1.Type.GENERALIZEDTIME &&
+      typeof genTimeNode.value === 'string'
+    ) {
+      genTime = forge.asn1.generalizedTimeToDate(genTimeNode.value);
+    }
+
+    typeNode.value = forge.asn1.oidToDer(forge.pki.oids.data).getBytes();
+
+    return {
+      tstInfo: latin1ToUint8(tstInfoDer),
+      imprintOid: forge.asn1.derToOid(imprintOidNode.value as string),
+      imprint: hashedMessage.value,
+      genTime,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function asn1Children(
+  node: forge.asn1.Asn1 | undefined
+): forge.asn1.Asn1[] | null {
+  return node && Array.isArray(node.value) ? node.value : null;
 }
 
 function extractSignerInfoFields(
@@ -415,11 +825,11 @@ function detectSigScheme(
   digestOid: string
 ): SigScheme | { unsupported: string } {
   if (!signatureAlgorithmArr || signatureAlgorithmArr.length === 0) {
-    return { unsupported: 'Missing signatureAlgorithm' };
+    return { unsupported: trText('Missing signatureAlgorithm') };
   }
   const oidNode = signatureAlgorithmArr[0];
   if (!oidNode || oidNode.type !== forge.asn1.Type.OID) {
-    return { unsupported: 'Malformed signatureAlgorithm' };
+    return { unsupported: trText('Malformed signatureAlgorithm') };
   }
   const oid = forge.asn1.derToOid(oidNode.value as string);
   const implicitHash = hashNameFromOid(digestOid);
@@ -428,7 +838,11 @@ function detectSigScheme(
     case '1.2.840.113549.1.1.1':
       return implicitHash
         ? { kind: 'rsa-pkcs1', hashName: implicitHash }
-        : { unsupported: `Unsupported digest OID ${digestOid}` };
+        : {
+            unsupported: trText('Unsupported digest OID {{digestOid}}', {
+              digestOid,
+            }),
+          };
     case '1.2.840.113549.1.1.5':
       return { kind: 'rsa-pkcs1', hashName: 'SHA-1' };
     case '1.2.840.113549.1.1.11':
@@ -456,9 +870,17 @@ function detectSigScheme(
     case '1.2.840.10045.2.1':
       return implicitHash
         ? { kind: 'ecdsa', hashName: implicitHash }
-        : { unsupported: `Unsupported digest OID ${digestOid}` };
+        : {
+            unsupported: trText('Unsupported digest OID {{digestOid}}', {
+              digestOid,
+            }),
+          };
     default:
-      return { unsupported: `Unsupported signature algorithm OID ${oid}` };
+      return {
+        unsupported: trText('Unsupported signature algorithm OID {{oid}}', {
+          oid,
+        }),
+      };
   }
 }
 
@@ -493,14 +915,19 @@ function parsePssParams(paramsNode: forge.asn1.Asn1 | undefined): {
 function extractSpkiDer(
   p7: forge.pkcs7.PkcsSignedData & {
     rawCapture?: { certificates?: forge.asn1.Asn1 };
-  }
+  },
+  index: number
 ): Uint8Array | null {
   try {
     const certsNode = p7.rawCapture?.certificates;
-    if (!certsNode || !Array.isArray(certsNode.value) || !certsNode.value[0]) {
+    if (
+      !certsNode ||
+      !Array.isArray(certsNode.value) ||
+      !certsNode.value[index]
+    ) {
       return null;
     }
-    const certAsn1 = certsNode.value[0];
+    const certAsn1 = certsNode.value[index];
     if (!Array.isArray(certAsn1.value) || !certAsn1.value[0]) return null;
     const tbs = certAsn1.value[0];
     if (!Array.isArray(tbs.value)) return null;
@@ -575,7 +1002,7 @@ async function verifyViaWebCrypto(
   if (!subtle) {
     return {
       status: 'unsupported',
-      reason: 'Web Crypto API not available in this context',
+      reason: trText('Web Crypto API not available in this context'),
     };
   }
 
@@ -602,8 +1029,9 @@ async function verifyViaWebCrypto(
         ? { status: 'verified' }
         : {
             status: 'failed',
-            reason:
-              'RSA-PSS signature does not verify against signer public key',
+            reason: trText(
+              'RSA-PSS signature does not verify against signer public key'
+            ),
           };
     }
 
@@ -612,14 +1040,14 @@ async function verifyViaWebCrypto(
       if (!curve) {
         return {
           status: 'unsupported',
-          reason: 'Unsupported ECDSA curve in signer certificate',
+          reason: trText('Unsupported ECDSA curve in signer certificate'),
         };
       }
       const p1363 = ecdsaDerToP1363(sig, curve.coordBytes);
       if (!p1363) {
         return {
           status: 'failed',
-          reason: 'Malformed ECDSA signature (could not parse r,s)',
+          reason: trText('Malformed ECDSA signature (could not parse r,s)'),
         };
       }
       const key = await subtle.importKey(
@@ -639,7 +1067,9 @@ async function verifyViaWebCrypto(
         ? { status: 'verified' }
         : {
             status: 'failed',
-            reason: 'ECDSA signature does not verify against signer public key',
+            reason: trText(
+              'ECDSA signature does not verify against signer public key'
+            ),
           };
     }
 
@@ -656,21 +1086,24 @@ async function verifyViaWebCrypto(
         ? { status: 'verified' }
         : {
             status: 'failed',
-            reason:
-              'RSA-PKCS1 signature does not verify against signer public key',
+            reason: trText(
+              'RSA-PKCS1 signature does not verify against signer public key'
+            ),
           };
     }
 
     return {
       status: 'unsupported',
-      reason: `Signature scheme ${scheme.kind} not implemented`,
+      reason: trText('Signature scheme {{kind}} not implemented', {
+        kind: scheme.kind,
+      }),
     };
   } catch (e) {
     return {
       status: 'unsupported',
-      reason:
-        'Web Crypto import/verify failed: ' +
-        (e instanceof Error ? e.message : String(e)),
+      reason: trText('Web Crypto import/verify failed: {{error}}', {
+        error: e instanceof Error ? e.message : String(e),
+      }),
     };
   }
 }
@@ -685,46 +1118,65 @@ async function performCryptoVerification(
   pdfBytes: Uint8Array,
   byteRange: number[],
   signerCert: forge.pki.Certificate,
-  fields: SignerInfoFields | null
+  fields: SignerInfoFields | null,
+  timestamp: TimestampToken | null = null
 ): Promise<CryptoVerificationResult> {
   if (!fields) {
-    return { status: 'failed', reason: 'Could not parse signer info' };
+    return { status: 'failed', reason: trText('Could not parse signer info') };
   }
-  if (byteRange.length !== 4) {
-    return { status: 'failed', reason: 'Malformed ByteRange' };
+  const byteRangeError = getByteRangeError(byteRange, pdfBytes.length);
+  if (byteRangeError) {
+    return { status: 'failed', reason: byteRangeError };
   }
 
   const md = createMd(fields.digestOid);
   if (!md) {
     return {
       status: 'unsupported',
-      reason: `Unsupported digest OID ${fields.digestOid}`,
+      reason: trText('Unsupported digest OID {{digestOid}}', {
+        digestOid: fields.digestOid,
+      }),
     };
   }
 
   const [start1, len1, start2, len2] = byteRange;
-  if (
-    start1 < 0 ||
-    len1 < 0 ||
-    start2 < 0 ||
-    len2 < 0 ||
-    start1 + len1 > pdfBytes.length ||
-    start2 + len2 > pdfBytes.length
-  ) {
-    return { status: 'failed', reason: 'ByteRange out of bounds' };
-  }
-
   const signedContent = new Uint8Array(len1 + len2);
   signedContent.set(pdfBytes.subarray(start1, start1 + len1), 0);
   signedContent.set(pdfBytes.subarray(start2, start2 + len2), len1);
 
-  md.update(uint8ToLatin1(signedContent));
+  // A timestamp token signs its TSTInfo, which in turn holds the hash of the
+  // document bytes (RFC 3161, 2.4.2), so the document is checked against that
+  // imprint and the CMS signature against the TSTInfo.
+  let content: Uint8Array = signedContent;
+  if (timestamp) {
+    const imprintMd = createMd(timestamp.imprintOid);
+    if (!imprintMd) {
+      return {
+        status: 'unsupported',
+        reason: trText('Unsupported digest OID {{digestOid}}', {
+          digestOid: timestamp.imprintOid,
+        }),
+      };
+    }
+    imprintMd.update(uint8ToLatin1(signedContent));
+    if (imprintMd.digest().bytes() !== timestamp.imprint) {
+      return {
+        status: 'failed',
+        reason: trText(
+          'Document hash does not match the timestamp: PDF was modified after timestamping'
+        ),
+      };
+    }
+    content = timestamp.tstInfo;
+  }
+
+  md.update(uint8ToLatin1(content));
   const contentHashBytes = md.digest().bytes();
 
   const authAttrs = fields.authAttrs;
   const signatureBytes = fields.signatureBytes;
   if (!signatureBytes) {
-    return { status: 'failed', reason: 'Empty signature bytes' };
+    return { status: 'failed', reason: trText('Empty signature bytes') };
   }
 
   const scheme = detectSigScheme(
@@ -767,8 +1219,9 @@ async function performCryptoVerification(
     if (messageDigestAttrValue !== contentHashBytes) {
       return {
         status: 'failed',
-        reason:
-          'Content hash does not match messageDigest attribute — PDF was modified after signing',
+        reason: trText(
+          'Content hash does not match messageDigest attribute: PDF was modified after signing'
+        ),
       };
     }
 
@@ -780,10 +1233,10 @@ async function performCryptoVerification(
     );
     signedBytesForVerify = latin1ToUint8(forge.asn1.toDer(asSet).getBytes());
   } else {
-    signedBytesForVerify = signedContent;
+    signedBytesForVerify = content;
   }
 
-  if (scheme.kind === 'rsa-pkcs1') {
+  if (scheme.kind === 'rsa-pkcs1' && !hasLowRsaExponent(signerCert.publicKey)) {
     try {
       const publicKey = signerCert.publicKey as forge.pki.rsa.PublicKey;
       const md2 = createMd(fields.digestOid)!;
@@ -795,11 +1248,12 @@ async function performCryptoVerification(
     }
   }
 
-  const spkiDer = extractSpkiDer(p7);
+  const signerIndex = (p7.certificates ?? []).indexOf(signerCert);
+  const spkiDer = signerIndex < 0 ? null : extractSpkiDer(p7, signerIndex);
   if (!spkiDer) {
     return {
       status: 'unsupported',
-      reason: 'Could not extract signer public key',
+      reason: trText('Could not extract signer public key'),
     };
   }
   return verifyViaWebCrypto(

@@ -181,7 +181,7 @@ OPTIONS:
   --dockerfile <path>     Dockerfile to use           (default: Dockerfile)
   --simple-mode           Enable Simple Mode
   --base-url <path>       Subdirectory base URL       (e.g. /pdf/)
-  --compression <mode>    Compression: g, b, o, all   (default: all)
+  --compression <mode>    Compression: g, b, o, all   (default: o)
   --language <code>       Default UI language          (e.g. fr, de, es)
   --brand-name <name>     Custom brand name
   --brand-logo <path>     Logo path relative to public/
@@ -358,11 +358,11 @@ interactive_mode() {
 
   # [4] Default language (optional)
   echo -e "${BOLD}[4/8] Default UI Language ${GREEN}(optional)${NC}"
-  echo "    Supported: en, ar, be, da, de, es, fr, id, it, nl, pt, tr, vi, zh, zh-TW"
+  echo "    Supported: en, ar, be, ca, da, de, es, fa, fr, id, it, ja, ko, nl, pl, pt, ru, sk, sv, tr, uk, vi, zh, zh-TW"
   while true; do
     read -r -p "    Language [en]: " input
     LANGUAGE="${input:-}"
-    if [ -z "$LANGUAGE" ] || echo " en ar be da de es fr id it nl pt tr vi zh zh-TW " | grep -q " $LANGUAGE "; then
+    if [ -z "$LANGUAGE" ] || echo " en ar be ca da de es fa fr id it ja ko nl pl pt ru sk sv tr uk vi zh zh-TW " | grep -q " $LANGUAGE "; then
       break
     fi
     warn "Invalid language code '${LANGUAGE}'. Try again."
@@ -500,7 +500,7 @@ fi
 
 # Validate language code if provided
 if [ -n "$LANGUAGE" ]; then
-  VALID_LANGS="en ar be da de es fr id it nl pt tr vi zh zh-TW"
+  VALID_LANGS="en ar be ca da de es fa fr id it ja ko nl pl pt ru sk sv tr uk vi zh zh-TW"
   if ! echo " $VALID_LANGS " | grep -q " $LANGUAGE "; then
     error "Invalid language code: ${LANGUAGE}"
     error "Supported: ${VALID_LANGS}"

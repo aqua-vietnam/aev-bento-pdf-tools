@@ -1,6 +1,7 @@
 import i18next from 'i18next';
 import HttpBackend from 'i18next-http-backend';
-import { getStoredItem, setStoredItem } from '../utils/safe-storage.js';
+import { setStoredItem } from '../utils/safe-storage.js';
+import { fillPlaceholders } from './placeholders.js';
 import enCommon from '../../../public/locales/en/common.json';
 import enTools from '../../../public/locales/en/tools.json';
 
@@ -20,6 +21,7 @@ export const supportedLanguages = [
   'id',
   'it',
   'pt',
+  'pl',
   'nl',
   'da',
   'sv',
@@ -27,6 +29,8 @@ export const supportedLanguages = [
   'ja',
   'uk',
   'sk',
+  'ca',
+  'fa',
 ] as const;
 export type SupportedLanguage = (typeof supportedLanguages)[number];
 
@@ -45,6 +49,7 @@ export const languageNames: Record<SupportedLanguage, string> = {
   id: 'Bahasa Indonesia',
   it: 'Italiano',
   pt: 'Português',
+  pl: 'Polski',
   nl: 'Nederlands',
   da: 'Dansk',
   sv: 'Svenska',
@@ -52,7 +57,17 @@ export const languageNames: Record<SupportedLanguage, string> = {
   ja: '日本語',
   uk: 'Українська',
   sk: 'Slovenčina',
+  ca: 'Català',
+  fa: 'فارسی',
 };
+
+// Longest codes first so multi-part tags like zh-TW win over their prefix (zh).
+const LANGUAGE_PATTERN = [...supportedLanguages]
+  .sort((a, b) => b.length - a.length)
+  .join('|');
+
+const URL_LANGUAGE_REGEX = new RegExp(`^/(${LANGUAGE_PATTERN})(?:/|$)`);
+const LANGUAGE_PREFIX_REGEX = new RegExp(`^/(${LANGUAGE_PATTERN})(/.*)?$`);
 
 export const getLanguageFromUrl = (): SupportedLanguage => {
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -66,9 +81,7 @@ export const getLanguageFromUrl = (): SupportedLanguage => {
     path = '/' + path;
   }
 
-  const langMatch = path.match(
-    /^\/(en|ar|fr|es|de|zh|zh-TW|vi|tr|id|it|pt|nl|be|da|ko|sv|ru|ja|uk|sk)(?:\/|$)/
-  );
+  const langMatch = path.match(URL_LANGUAGE_REGEX);
   if (
     langMatch &&
     supportedLanguages.includes(langMatch[1] as SupportedLanguage)
@@ -76,50 +89,21 @@ export const getLanguageFromUrl = (): SupportedLanguage => {
     return langMatch[1] as SupportedLanguage;
   }
 
-  const storedLang = getStoredItem('i18nextLng');
-  if (
-    storedLang &&
-    supportedLanguages.includes(storedLang as SupportedLanguage)
-  ) {
-    return storedLang as SupportedLanguage;
-  }
-
-  // Check browser language preferences
-  if (typeof navigator !== 'undefined' && navigator.languages) {
-    for (const lang of navigator.languages) {
-      if (supportedLanguages.includes(lang as SupportedLanguage)) {
-        return lang as SupportedLanguage;
-      }
-
-      const primaryLang = lang.split('-')[0];
-      if (supportedLanguages.includes(primaryLang as SupportedLanguage)) {
-        return primaryLang as SupportedLanguage;
-      }
-    }
-  }
-
-  const envLang = import.meta.env?.VITE_DEFAULT_LANGUAGE;
-  if (envLang && supportedLanguages.includes(envLang as SupportedLanguage)) {
-    return envLang as SupportedLanguage;
-  }
-
   return 'en';
 };
 
-let initialized = false;
+export const LANGUAGE_CHOICE_KEY = 'bentopdf-language';
 
-export const initI18n = async (): Promise<typeof i18next> => {
-  if (initialized) return i18next;
+let initPromise: Promise<typeof i18next> | null = null;
 
+const runInit = async (): Promise<typeof i18next> => {
   const currentLang = getLanguageFromUrl();
-
-  setStoredItem('i18nextLng', currentLang);
 
   await i18next.use(HttpBackend).init({
     lng: currentLang,
     fallbackLng: 'en',
     supportedLngs: supportedLanguages as unknown as string[],
-    ns: ['common', 'tools'],
+    ns: currentLang === 'en' ? ['common', 'tools'] : ['common', 'tools', 'ui'],
     defaultNS: 'common',
     preload: [currentLang],
     partialBundledLanguages: true,
@@ -127,6 +111,7 @@ export const initI18n = async (): Promise<typeof i18next> => {
       en: {
         common: enCommon,
         tools: enTools,
+        ui: {},
       },
     },
     backend: {
@@ -138,18 +123,87 @@ export const initI18n = async (): Promise<typeof i18next> => {
   });
 
   await i18next.loadNamespaces('tools');
+  if (currentLang !== 'en') {
+    try {
+      await i18next.loadNamespaces('ui');
+    } catch (error) {
+      console.warn('[i18n] Could not load interface messages:', error);
+    }
+  }
 
-  initialized = true;
   return i18next;
+};
+
+export const initI18n = (): Promise<typeof i18next> => {
+  initPromise ??= runInit();
+  return initPromise;
+};
+
+const domReady = (): Promise<void> =>
+  document.readyState === 'loading'
+    ? new Promise((resolve) =>
+        document.addEventListener('DOMContentLoaded', () => resolve(), {
+          once: true,
+        })
+      )
+    : Promise.resolve();
+
+const I18N_READY_TIMEOUT_MS = 5000;
+
+export const onPageReady = (callback: () => void | Promise<void>): void => {
+  const i18nReady = Promise.race([
+    initI18n().then(
+      (): void => undefined,
+      (): void => undefined
+    ),
+    new Promise<void>((resolve) => setTimeout(resolve, I18N_READY_TIMEOUT_MS)),
+  ]);
+  const holdDrop = (event: DragEvent) => event.preventDefault();
+  window.addEventListener('dragover', holdDrop);
+  window.addEventListener('drop', holdDrop);
+  void Promise.all([domReady(), i18nReady]).then(() => {
+    window.removeEventListener('dragover', holdDrop);
+    window.removeEventListener('drop', holdDrop);
+    return callback();
+  });
 };
 
 export const t = (key: string, options?: Record<string, unknown>): string => {
   return i18next.t(key, options);
 };
 
+export const hasKey = (key: string): boolean => i18next.exists(key);
+
+export const trText = (
+  text: string,
+  params?: Record<string, string | number>
+): string => {
+  const language = i18next.language;
+  let template = text;
+  if (i18next.isInitialized && language && language !== 'en') {
+    const translated = i18next.getResource(language, 'ui', text, {
+      keySeparator: false,
+    });
+    if (typeof translated === 'string' && translated) template = translated;
+  }
+  return fillPlaceholders(template, params);
+};
+
+const escapeForHtml = (text: string): string =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+export const trHtml = (
+  text: string,
+  params?: Record<string, string | number>
+): string => escapeForHtml(trText(text, params));
+
 export const changeLanguage = (lang: SupportedLanguage): void => {
   if (!supportedLanguages.includes(lang)) return;
-  setStoredItem('i18nextLng', lang);
+  setStoredItem(LANGUAGE_CHOICE_KEY, lang);
 
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
   let relativePath = window.location.pathname;
@@ -163,9 +217,7 @@ export const changeLanguage = (lang: SupportedLanguage): void => {
   }
 
   let pagePathWithoutLang = relativePath;
-  const langPrefixMatch = relativePath.match(
-    /^\/(en|ar|fr|es|de|zh|zh-TW|vi|tr|id|it|pt|nl|be|da|ko|sv|ru|ja|uk|sk)(\/.*)?$/
-  );
+  const langPrefixMatch = relativePath.match(LANGUAGE_PREFIX_REGEX);
   if (langPrefixMatch) {
     pagePathWithoutLang = langPrefixMatch[2] || '/';
   }
@@ -178,7 +230,10 @@ export const changeLanguage = (lang: SupportedLanguage): void => {
   if (lang === 'en') {
     newRelativePath = pagePathWithoutLang;
   } else {
-    newRelativePath = `/${lang}${pagePathWithoutLang}`;
+    newRelativePath =
+      pagePathWithoutLang === '/'
+        ? `/${lang}`
+        : `/${lang}${pagePathWithoutLang}`;
   }
 
   let newPath: string;
@@ -227,7 +282,9 @@ export const applyTranslations = (): void => {
   });
 
   document.documentElement.lang = i18next.language;
-  document.documentElement.dir = i18next.language === 'ar' ? 'rtl' : 'ltr';
+  document.documentElement.dir = ['ar', 'fa'].includes(i18next.language)
+    ? 'rtl'
+    : 'ltr';
 };
 
 export const rewriteLinks = (): void => {
@@ -258,8 +315,16 @@ export const rewriteLinks = (): void => {
       return;
     }
 
+    const pathOnly =
+      basePath && basePath !== '/' && href.startsWith(`${basePath}/`)
+        ? href.slice(basePath.length)
+        : href;
+    if (/^\/(blog|docs)(\/|$|[?#])/.test(pathOnly)) {
+      return;
+    }
+
     const langPrefixRegex = new RegExp(
-      `^(${basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})?/?(en|ar|fr|es|de|zh|zh-TW|vi|tr|id|it|pt|nl|be|da|ko|sv|ru|ja|uk|sk)(/|$)`
+      `^(${basePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})?/?(${LANGUAGE_PATTERN})(/|$|[?#])`
     );
     if (langPrefixRegex.test(href)) {
       return;
@@ -285,7 +350,9 @@ export const rewriteLinks = (): void => {
       newHref = `/${currentLang}/${href}`;
     }
 
-    newHref = newHref.replace(/([^:])\/+/g, '$1/');
+    newHref = newHref
+      .replace(/([^:])\/+/g, '$1/')
+      .replace(/^([^?#]*[^/?#])\/(?=$|[?#])/, '$1');
 
     link.setAttribute('href', newHref);
   });

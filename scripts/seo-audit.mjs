@@ -1,18 +1,25 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { canonicalBasePath, isIndexingBlocked } from './indexing-policy.mjs';
+import { createTranslationChecker } from './page-translation.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const DIST_DIR = path.resolve(__dirname, '../dist');
 const LOCALES_DIR = path.resolve(__dirname, '../public/locales');
-const SITE_URL = (process.env.SITE_URL || 'https://www.bentopdf.com').replace(
+// The blog is BentoPDF's own content, so generate-blog.mjs and the hand-written
+// blog pages keep their canonicals on the official site, also in self-hosted
+// builds with a custom SITE_URL or BASE_URL.
+const OFFICIAL_SITE_URL = 'https://www.bentopdf.com';
+const SITE_URL = (process.env.SITE_URL || OFFICIAL_SITE_URL).replace(
   /\/+$/,
   ''
 );
 const BASE_PATH = (process.env.BASE_URL || '/').replace(/\/$/, '');
 const HOST = new URL(SITE_URL).hostname;
+const OFFICIAL_HOST = new URL(OFFICIAL_SITE_URL).hostname;
 
 const NOINDEX_ALLOWLIST = new Set(['404.html', 'wasm-settings.html']);
 const SKIP_DIRS = new Set([
@@ -67,19 +74,89 @@ function findAll(html, regex) {
   return out;
 }
 
+const LOCALE_DIRS = new Set(
+  fs
+    .readdirSync(LOCALES_DIR)
+    .filter((d) => fs.statSync(path.join(LOCALES_DIR, d)).isDirectory())
+);
+
+const KEY_MAPPING = { index: 'home', 404: 'notFound' };
+const toCamelCase = (str) =>
+  str.replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+
+const toolsByLang = {};
+for (const lang of LOCALE_DIRS) {
+  const toolsPath = path.join(LOCALES_DIR, lang, 'tools.json');
+  toolsByLang[lang] = fs.existsSync(toolsPath)
+    ? JSON.parse(fs.readFileSync(toolsPath, 'utf-8'))
+    : {};
+}
+
+const isPageTranslated = createTranslationChecker(
+  toolsByLang,
+  (baseName) => KEY_MAPPING[baseName] || toCamelCase(baseName)
+);
+
+function hasTrailingSlash(href) {
+  const { pathname } = new URL(href);
+  return pathname !== '/' && pathname.endsWith('/');
+}
+
+function isBlogPage(rel) {
+  return rel.startsWith('blog/');
+}
+
 function expectedCanonicalForFile(rel) {
   const parts = rel.split('/');
   const fileName = parts.pop();
   const baseName = fileName.replace(/\.html$/, '');
   const slug = baseName === 'index' ? '' : baseName;
+  if (isBlogPage(rel)) {
+    return `${OFFICIAL_SITE_URL}/blog${slug ? `/${slug}` : ''}`;
+  }
   const segments = [SITE_URL];
-  if (BASE_PATH) segments.push(BASE_PATH.replace(/^\//, ''));
+  const canonicalBase = canonicalBasePath();
+  if (canonicalBase) segments.push(canonicalBase.replace(/^\//, ''));
+  for (const dir of parts) {
+    if (LOCALE_DIRS.has(dir)) {
+      if (isPageTranslated(baseName, dir)) segments.push(dir);
+    }
+  }
   if (slug) segments.push(slug);
   return segments.join('/').replace(/\/+$/, '') || SITE_URL;
 }
 
-function auditHtml(file) {
+function auditHtml(file, knownSlugs) {
   const html = fs.readFileSync(file.full, 'utf-8');
+  const isLocalized = file.rel.split('/').some((seg) => LOCALE_DIRS.has(seg));
+
+  if (!isLocalized && /[—–]/.test(html)) {
+    fail(
+      'em-dash',
+      `${file.rel}: contains an em or en dash (house style forbids them)`
+    );
+  }
+
+  if (!isLocalized) {
+    const internal = findAll(html, /<a[^>]+href=["'](\/[^"'#?]*)["']/g);
+    for (const href of internal) {
+      const clean = (
+        BASE_PATH && (href === BASE_PATH || href.startsWith(`${BASE_PATH}/`))
+          ? href.slice(BASE_PATH.length)
+          : href
+      ).replace(/\/$/, '');
+      if (clean === '') continue;
+      const seg = clean.slice(1);
+      if (seg.includes('/')) continue;
+      if (LOCALE_DIRS.has(seg) || seg === 'blog' || seg === 'docs') continue;
+      if (!knownSlugs.has(seg)) {
+        fail(
+          'dead-link',
+          `${file.rel}: links to "${href}" but no such page exists in dist`
+        );
+      }
+    }
+  }
   const titles = findAll(html, /<title[^>]*>[\s\S]*?<\/title>/g);
   if (titles.length === 0) {
     fail('title', `${file.rel}: no <title>`);
@@ -108,10 +185,17 @@ function auditHtml(file) {
     }
     try {
       const url = new URL(actual);
-      if (url.hostname !== HOST) {
+      if (hasTrailingSlash(actual)) {
+        fail(
+          'canonical',
+          `${file.rel}: canonical "${actual}" ends with "/" (the server redirects it to the slashless form)`
+        );
+      }
+      const expectedHost = isBlogPage(file.rel) ? OFFICIAL_HOST : HOST;
+      if (url.hostname !== expectedHost) {
         warn(
           'canonical',
-          `${file.rel}: canonical host "${url.hostname}" != expected "${HOST}"`
+          `${file.rel}: canonical host "${url.hostname}" != expected "${expectedHost}"`
         );
       }
     } catch {
@@ -138,6 +222,7 @@ function auditHtml(file) {
   if (
     robots &&
     /noindex/i.test(robots) &&
+    !isIndexingBlocked() &&
     !NOINDEX_ALLOWLIST.has(file.rel) &&
     !NOINDEX_ALLOWLIST.has(path.basename(file.rel))
   ) {
@@ -147,7 +232,7 @@ function auditHtml(file) {
     );
   }
 
-  const emptyI18n = html.match(/<span[^>]*data-i18n="[^"]+"[^>]*>\s*<\/span>/g);
+  const emptyI18n = html.match(/<span[^>]*data-i18n="[^"]+"[^>]*><\/span>/g);
   if (emptyI18n && emptyI18n.length > 0) {
     fail(
       'data-i18n',
@@ -176,8 +261,73 @@ function auditHtml(file) {
           `${file.rel}: hreflang href host "${url.hostname}" != expected "${HOST}"`
         );
       }
+      if (hasTrailingSlash(m[1])) {
+        fail(
+          'hreflang',
+          `${file.rel}: hreflang "${m[1]}" ends with "/" (the server redirects it to the slashless form)`
+        );
+      }
     } catch {
       fail('hreflang', `${file.rel}: hreflang href "${m[1]}" not a valid URL`);
+    }
+  }
+
+  const descriptions = findAll(
+    html,
+    /<meta[^>]+name=["']description["'][^>]*content=["']([^"']*)["']/g
+  );
+  if (descriptions.length > 1) {
+    fail(
+      'description',
+      `${file.rel}: ${descriptions.length} meta description tags (expected 1)`
+    );
+  }
+  for (const desc of descriptions) {
+    if (desc.includes('★')) {
+      fail('description', `${file.rel}: meta description contains "★"`);
+    }
+  }
+
+  const isTopLevel = !file.rel.includes('/');
+  if (isTopLevel) {
+    const socialImages = findAll(
+      html,
+      /<meta[^>]+(?:property=["']og:image["']|name=["']twitter:image["'])[^>]*content=["']([^"']+)["']/g
+    );
+    for (const image of socialImages) {
+      let pathname;
+      try {
+        pathname = image.startsWith('http') ? new URL(image).pathname : image;
+      } catch {
+        continue;
+      }
+      if (
+        pathname.startsWith('/images/') &&
+        !fs.existsSync(path.join(DIST_DIR, pathname.replace(/^\//, '')))
+      ) {
+        fail(
+          'social-image',
+          `${file.rel}: og/twitter image "${pathname}" does not exist in dist`
+        );
+      }
+    }
+
+    if (html.includes('faq-d') && !html.includes('"FAQPage"')) {
+      fail(
+        'faq-schema',
+        `${file.rel}: visible FAQ section without FAQPage JSON-LD`
+      );
+    }
+
+    const internalHtmlLinks = findAll(
+      html,
+      /<a[^>]+href=["'](\/?[a-z0-9][a-z0-9-]*\.html)["']/g
+    );
+    for (const href of internalHtmlLinks) {
+      fail(
+        'internal-link',
+        `${file.rel}: internal link "${href}" should be extensionless`
+      );
     }
   }
 }
@@ -214,6 +364,12 @@ function auditSitemap() {
 
     try {
       const url = new URL(loc);
+      if (hasTrailingSlash(loc)) {
+        fail(
+          'sitemap',
+          `sitemap URL ends with "/" (the server redirects it to the slashless form): ${loc}`
+        );
+      }
       if (url.hostname !== HOST) {
         fail(
           'sitemap',
@@ -248,7 +404,12 @@ function main() {
     fail('audit', 'no HTML files found in dist/');
   }
 
-  for (const file of files) auditHtml(file);
+  const knownSlugs = new Set(
+    files
+      .filter((f) => !f.rel.includes('/'))
+      .map((f) => f.rel.replace(/\.html$/, ''))
+  );
+  for (const file of files) auditHtml(file, knownSlugs);
   auditSitemap();
 
   const total = failures.length + warnings.length;

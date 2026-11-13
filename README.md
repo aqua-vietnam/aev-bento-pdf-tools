@@ -1,15 +1,37 @@
 <p align="center"><img src="public/images/favicon-no-bg.svg" width="80"></p>
 <h1 align="center">BentoPDF</h1>
+<h3 align="center">💖 Thank You to Our Sponsors</h3>
+<p align="center"><sub>Organizational Supporters</sub></p>
 <p align="center">
-  <a href="https://www.digitalocean.com/?refcode=d93c189ef6d0&utm_campaign=Referral_Invite&utm_medium=Referral_Program&utm_source=badge">
-    <img src="https://web-platforms.sfo2.cdn.digitaloceanspaces.com/WWW/Badge%203.svg" alt="DigitalOcean Referral Badge">
+  <a href="https://vercel.com/open-source-program">
+    <img alt="Vercel OSS Program" src="https://vercel.com/oss/program-badge-2026.svg" height="30" />
   </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://www.digitalocean.com/?refcode=d93c189ef6d0&utm_campaign=Referral_Invite&utm_medium=Referral_Program&utm_source=badge">
+    <img src="https://web-platforms.sfo2.cdn.digitaloceanspaces.com/WWW/Badge%203.svg" alt="DigitalOcean Referral Badge" height="44">
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://www.nvidia.com/en-us/startups/">
+    <img alt="NVIDIA Inception Program" src="public/images/nvidia-inception.svg" height="44" />
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://www.vultr.com/">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="public/images/vultr-logo-dark.svg" />
+      <img alt="Vultr" src="public/images/vultr-logo-light.svg" height="30" />
+    </picture>
+  </a>
+</p>
+<p align="center"><sub>Individual Supporters</sub></p>
+<p align="center"><!-- sponsors --><a href="https://github.com/gaedeke"><img src="https:&#x2F;&#x2F;github.com&#x2F;gaedeke.png" width="60px" alt="User avatar: " /></a><a href="https://github.com/stiflerbox"><img src="https:&#x2F;&#x2F;github.com&#x2F;stiflerbox.png" width="60px" alt="User avatar: " /></a><a href="https://github.com/shollyethan"><img src="https:&#x2F;&#x2F;github.com&#x2F;shollyethan.png" width="60px" alt="User avatar: Ethan Sholly" /></a><a href="https://github.com/KnudH"><img src="https:&#x2F;&#x2F;github.com&#x2F;KnudH.png" width="60px" alt="User avatar: Knud Hollander" /></a><a href="https://github.com/mohannadhussain"><img src="https:&#x2F;&#x2F;github.com&#x2F;mohannadhussain.png" width="60px" alt="User avatar: Mohannad Hussain" /></a><a href="https://github.com/chaoscastle"><img src="https:&#x2F;&#x2F;github.com&#x2F;chaoscastle.png" width="60px" alt="User avatar: " /></a><a href="https://github.com/RobertGonzales1"><img src="https:&#x2F;&#x2F;github.com&#x2F;RobertGonzales1.png" width="60px" alt="User avatar: Robert Gonzales" /></a><a href="https://github.com/michivonah"><img src="https:&#x2F;&#x2F;github.com&#x2F;michivonah.png" width="60px" alt="User avatar: Michi" /></a><a href="https://github.com/bmikaili"><img src="https:&#x2F;&#x2F;github.com&#x2F;bmikaili.png" width="60px" alt="User avatar: Berzan" /></a><a href="https://github.com/Thanyanit-J"><img src="https:&#x2F;&#x2F;github.com&#x2F;Thanyanit-J.png" width="60px" alt="User avatar: Thanyanit Jongjitragan" /></a><a href="https://github.com/AceofSpades5757"><img src="https:&#x2F;&#x2F;github.com&#x2F;AceofSpades5757.png" width="60px" alt="User avatar: Kyle L. Davis" /></a><a href="https://github.com/Jacco011"><img src="https:&#x2F;&#x2F;github.com&#x2F;Jacco011.png" width="60px" alt="User avatar: " /></a><a href="https://github.com/Pallandos"><img src="https:&#x2F;&#x2F;github.com&#x2F;Pallandos.png" width="60px" alt="User avatar: " /></a><a href="https://github.com/haritvsmurali"><img src="https:&#x2F;&#x2F;github.com&#x2F;haritvsmurali.png" width="60px" alt="User avatar: Hari Haran" /></a><a href="https://github.com/mrtoadie"><img src="https:&#x2F;&#x2F;github.com&#x2F;mrtoadie.png" width="60px" alt="User avatar: Toadie" /></a><a href="https://github.com/sam12dr21"><img src="https:&#x2F;&#x2F;github.com&#x2F;sam12dr21.png" width="60px" alt="User avatar: " /></a><a href="https://github.com/BGauthier2020"><img src="https:&#x2F;&#x2F;github.com&#x2F;BGauthier2020.png" width="60px" alt="User avatar: " /></a><!-- sponsors --></p>
+<p align="center">
+  <a href="https://github.com/sponsors/alam00000"><img alt="Become a Sponsor" src="https://img.shields.io/badge/Become%20a%20Sponsor-%E2%9D%A4-ff69b4?style=for-the-badge" /></a>
+  <a href="https://ko-fi.com/alio01"><img alt="Buy me a Coffee" src="https://img.shields.io/badge/Buy%20me%20a%20Coffee-yellow?style=for-the-badge&logo=kofi" /></a>
 </p>
 
 **BentoPDF** is a powerful, privacy-first, client-side PDF toolkit that is self-hostable and allows you to manipulate, edit, merge, and process PDF files directly in your browser. No server-side processing is required, ensuring your files remain secure and private.
 
-[![Docker Downloads](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fghcr-badge.elias.eu.org%2Fapi%2Falam00000%2Fbentopdf%2Fbentopdf&query=%24.downloadCount&logo=docker&label=Docker%20Downloads&color=blue)](https://github.com/alam00000/bentopdf/pkgs/container/bentopdf) [![Ko-fi](https://img.shields.io/badge/Buy%20me%20a%20Coffee-yellow?logo=kofi&style=flat-square)](https://ko-fi.com/alio01) ![GitHub Stars](https://img.shields.io/github/stars/alam00000/bentopdf?style=social)
-[![Sponsor me on GitHub](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ff69b4)](https://github.com/sponsors/alam00000)
+[![Docker Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Falam00000%2Fbentopdf%2Fbadges%2Fdocker-downloads.json&cacheSeconds=3600)](https://github.com/alam00000/bentopdf/pkgs/container/bentopdf-simple) ![GitHub Stars](https://img.shields.io/github/stars/alam00000/bentopdf?style=social)
 
 ![BentoPDF Tools](public/images/bentopdf-tools.png)
 
@@ -21,7 +43,6 @@
 - [Documentation](#-documentation)
 - [Licensing](#-licensing)
 - [Stargazers over time](#-stargazers-over-time)
-- [Thank You to Our Sponsors](#-thank-you-to-our-sponsors)
 - [Why BentoPDF?](#-why-bentopdf)
 - [Features / Tools Supported](#️-features--tools-supported)
   - [Organize & Manage PDFs](#organize--manage-pdfs)
@@ -29,6 +50,7 @@
   - [Convert to PDF](#convert-to-pdf)
   - [Convert from PDF](#convert-from-pdf)
   - [Secure & Optimize PDFs](#secure--optimize-pdfs)
+- [Other Products](#-other-products)
 - [Translations](#-translations)
 - [Getting Started](#-getting-started)
   - [Prerequisites](#prerequisites)
@@ -65,9 +87,9 @@ Have questions, feature requests, or want to chat with the community? Join our D
 
 ## 📚 Documentation
 
-[![Documentation](https://img.shields.io/badge/Docs-VitePress-646cff?style=for-the-badge&logo=vite&logoColor=white)](https://bentopdf.com/docs/)
+[![Documentation](https://img.shields.io/badge/Docs-VitePress-646cff?style=for-the-badge&logo=vite&logoColor=white)](https://www.bentopdf.com/docs)
 
-Visit our [Documentation](https://bentopdf.com/docs/) for:
+Visit our [Documentation](https://www.bentopdf.com/docs) for:
 
 - **Getting Started** guide
 - **Tools Reference** (50+ tools)
@@ -92,9 +114,11 @@ BentoPDF is **dual-licensed** to fit your needs:
   </a>
 </p>
 
-> **One-time purchase** · **Unlimited devices & users** · **Lifetime updates** · **No AGPL obligations**
+> **One-time purchase** · **One product, unlimited devices & users** · **Lifetime updates** · **No AGPL obligations**
 
-📖 For more details, see our [Licensing Page](https://bentopdf.com/licensing.html)
+> **Building on BentoPDF? Hyper Compress is included.** The commercial license covers [Hyper Compress](https://github.com/alam00000/bentopdf-hyper-compress) as a bundled component in eligible products: companies under US$1 million in revenue and funding, general PDF toolkits, and only through BentoPDF's own tools on the end user's device. Using the engine on its own, on a server, through an API or in other software needs a separate [Hyper Compress license](https://www.bentopdf.com/hyper-compress#pricing), and [Kura](https://www.bentopdf.com/kura#pricing) is licensed separately. Both are annual subscriptions from $99/year, under the [Hyper Compress](https://github.com/alam00000/bentopdf-hyper-compress/blob/main/COMMERCIAL-LICENSE.md) and [Kura](https://github.com/alam00000/bentopdf-kura/blob/main/COMMERCIAL-LICENSE.md) commercial licenses. See the [full license terms](COMMERCIAL-LICENSE.md).
+
+📖 For more details, see our [Licensing Page](https://www.bentopdf.com/licensing)
 
 ### AGPL Components (Pre-configured via CDN)
 
@@ -117,18 +141,6 @@ BentoPDF does **not** bundle AGPL-licensed processing libraries in its source co
 
 ---
 
-## 💖 Thank You to Our Sponsors
-
-We're incredibly grateful to all our sponsors and supporters who help keep BentoPDF free and open source!
-
-[![Sponsor me on GitHub](https://img.shields.io/badge/Become%20a%20Sponsor-%E2%9D%A4-ff69b4?style=for-the-badge)](https://github.com/sponsors/alam00000)
-[![Buy me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20Coffee-yellow?style=for-the-badge&logo=kofi)](https://ko-fi.com/alio01)
-
-<!-- sponsors -->
-<!-- sponsors -->
-
----
-
 ## ✨ Why BentoPDF?
 
 - **Privacy First**: All processing happens in your browser. Your files are never uploaded to a server, guaranteeing 100% privacy.
@@ -144,37 +156,38 @@ BentoPDF offers a comprehensive suite of tools to handle all your PDF needs.
 
 ### Organize & Manage PDFs
 
-| Tool Name                    | Description                                                                                             |
-| :--------------------------- | :------------------------------------------------------------------------------------------------------ |
-| **Merge PDFs**               | Combine multiple PDF files into one. Preserves Bookmarks.                                               |
-| **Split PDFs**               | Extract specific pages or divide a document into smaller files.                                         |
-| **Organize Pages**           | Reorder, duplicate, or delete pages with a simple drag-and-drop interface.                              |
-| **Extract Pages**            | Save a specific range of pages as a new PDF.                                                            |
-| **Delete Pages**             | Remove unwanted pages from your document.                                                               |
-| **Rotate PDF**               | Rotate individual or all pages in a document.                                                           |
-| **Rotate by Custom Degrees** | Rotate pages by any custom angle.                                                                       |
-| **N-Up PDF**                 | Combine multiple pages onto a single page.                                                              |
-| **View PDF**                 | A powerful, integrated PDF viewer.                                                                      |
-| **Alternate & Mix Pages**    | Merge pages by alternating pages from each PDF. Preserves Bookmarks.                                    |
-| **Posterize PDF**            | Split a PDF into multiple smaller pages for print.                                                      |
-| **PDF Multi Tool**           | Merge, Split, Organize, Delete, Rotate, Add Blank Pages, Extract and Duplicate in a unified interface.  |
-| **PDF Booklet**              | Rearrange pages for double-sided booklet printing. Fold and staple to create a booklet.                 |
-| **Add Attachments**          | Embed one or more files into your PDF.                                                                  |
-| **Extract Attachments**      | Extract all embedded files from PDF(s) as a ZIP.                                                        |
-| **Edit Attachments**         | View or remove attachments in your PDF.                                                                 |
-| **Divide Pages**             | Divide pages horizontally or vertically.                                                                |
-| **Combine to Single Page**   | Stitch all pages into one continuous scroll.                                                            |
-| **Add Blank Page**           | Insert an empty page anywhere in your PDF.                                                              |
-| **Reverse Pages**            | Flip the order of all pages in your document.                                                           |
-| **View Metadata**            | Inspect the hidden properties of your PDF.                                                              |
-| **PDFs to ZIP**              | Package multiple PDF files into a ZIP archive.                                                          |
-| **Compare PDFs**             | Compare two PDFs side by side.                                                                          |
+| Tool Name                    | Description                                                                                            |
+| :--------------------------- | :----------------------------------------------------------------------------------------------------- |
+| **Merge PDFs**               | Combine multiple PDF files into one. Preserves Bookmarks.                                              |
+| **Split PDFs**               | Extract specific pages or divide a document into smaller files.                                        |
+| **Organize Pages**           | Reorder, duplicate, or delete pages with a simple drag-and-drop interface.                             |
+| **Extract Pages**            | Save a specific range of pages as a new PDF.                                                           |
+| **Delete Pages**             | Remove unwanted pages from your document.                                                              |
+| **Rotate PDF**               | Rotate individual or all pages in a document.                                                          |
+| **Rotate by Custom Degrees** | Rotate pages by any custom angle.                                                                      |
+| **N-Up PDF**                 | Combine multiple pages onto a single page.                                                             |
+| **View PDF**                 | A powerful, integrated PDF viewer.                                                                     |
+| **Alternate & Mix Pages**    | Merge pages by alternating pages from each PDF. Preserves Bookmarks.                                   |
+| **Posterize PDF**            | Split a PDF into multiple smaller pages for print.                                                     |
+| **PDF Multi Tool**           | Merge, Split, Organize, Delete, Rotate, Add Blank Pages, Extract and Duplicate in a unified interface. |
+| **PDF Booklet**              | Rearrange pages for double-sided booklet printing. Fold and staple to create a booklet.                |
+| **Add Attachments**          | Embed one or more files into your PDF.                                                                 |
+| **Extract Attachments**      | Extract all embedded files from PDF(s) as a ZIP.                                                       |
+| **Edit Attachments**         | View or remove attachments in your PDF.                                                                |
+| **Divide Pages**             | Divide pages horizontally or vertically.                                                               |
+| **Combine to Single Page**   | Stitch all pages into one continuous scroll.                                                           |
+| **Add Blank Page**           | Insert an empty page anywhere in your PDF.                                                             |
+| **Reverse Pages**            | Flip the order of all pages in your document.                                                          |
+| **View Metadata**            | Inspect the hidden properties of your PDF.                                                             |
+| **PDFs to ZIP**              | Package multiple PDF files into a ZIP archive.                                                         |
+| **Compare PDFs**             | Compare two PDFs side by side.                                                                         |
 
 ### Edit & Modify PDFs
 
 | Tool Name                 | Description                                                                                                                                                                                     |
 | :------------------------ | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **PDF Editor**            | Annotate, highlight, redact, comment, add shapes/images, search, and view PDFs.                                                                                                                 |
+| **Edit PDF Text**         | Edit existing text directly in your PDF. Reuses the document's embedded fonts and keeps the rest of the page untouched.                                                                         |
 | **Create Fillable Forms** | Create professional fillable PDF forms with text fields, checkboxes, dropdowns, radio buttons, signatures, and more. Fully compliant with PDF standards for compatibility with all PDF viewers. |
 | **PDF Form Filler**       | Fill in forms directly in the browser. Also supports XFA forms.                                                                                                                                 |
 | **Add Page Numbers**      | Easily add page numbers with customizable formatting.                                                                                                                                           |
@@ -302,6 +315,7 @@ BentoPDF is available in multiple languages:
 | Vietnamese          | [![Vietnamese](https://img.shields.io/badge/Complete-green?style=flat-square)](public/locales/vi/common.json)             |
 | Korean              | [![Korean](https://img.shields.io/badge/Complete-green?style=flat-square)](public/locales/ko/common.json)                 |
 | Russian             | [![Russian](https://img.shields.io/badge/Complete-green?style=flat-square)](public/locales/ru/common.json)                |
+| Persian (Farsi)     | [![Persian](https://img.shields.io/badge/Complete-green?style=flat-square)](public/locales/fa/common.json)                |
 
 Want to help translate BentoPDF into your language? Check out our [Translation Guide](TRANSLATION.md)!
 
@@ -423,32 +437,34 @@ npm run preview
 
 **Compression Modes:**
 
-BentoPDF supports different compression modes for optimized builds:
+By default the build saves no compressed copies, and your server or host compresses files as it sends them. If your server can send precompressed files (nginx `gzip_static` or `brotli_static`, Apache, Caddy `precompressed`), set `COMPRESSION_MODE` to save `.gz` and/or `.br` copies next to each text and WASM file. The originals are always kept.
+
+The prebuilt Docker images have no copies, and their nginx compresses with gzip on the fly. Build your own image with `COMPRESSION_MODE=g` to have it serve `.gz` copies instead. The image's nginx can't serve brotli, so for brotli put a proxy or CDN that compresses with brotli, such as Traefik or Cloudflare, in front of it.
 
 ```bash
-# Gzip only (smallest Docker image size)
-npm run build:gzip
-docker build --build-arg COMPRESSION_MODE=g -t bentopdf:gzip .
-
-# Brotli only (best compression ratio)
-npm run build:brotli
-docker build --build-arg COMPRESSION_MODE=b -t bentopdf:brotli .
-
-# No compression (fastest build time)
+# No copies (default)
 npm run build:original
 docker build --build-arg COMPRESSION_MODE=o -t bentopdf:original .
 
-# All formats (default, maximum browser compatibility)
+# Gzip copies
+npm run build:gzip
+docker build --build-arg COMPRESSION_MODE=g -t bentopdf:gzip .
+
+# Brotli copies
+npm run build:brotli
+docker build --build-arg COMPRESSION_MODE=b -t bentopdf:brotli .
+
+# Both
 npm run build:all
 docker build --build-arg COMPRESSION_MODE=all -t bentopdf:all .
 ```
 
-| Mode  | Files Kept  | Use Case                          |
-| ----- | ----------- | --------------------------------- |
-| `g`   | `.gz` only  | Standard nginx or minimal size    |
-| `b`   | `.br` only  | Modern CDN with Brotli support    |
-| `o`   | originals   | Development or custom compression |
-| `all` | all formats | Maximum compatibility (default)   |
+| Mode  | Copies made     | Use case                              |
+| ----- | --------------- | ------------------------------------- |
+| `o`   | none            | Default, server compresses on the fly |
+| `g`   | `.gz`           | nginx with `gzip_static`              |
+| `b`   | `.br`           | Servers with `brotli_static`          |
+| `all` | `.gz` and `.br` | Servers that serve both               |
 
 **CDN Optimization:**
 
@@ -719,7 +735,7 @@ docker run -p 3000:8080 bentopdf
 
 **Default Language:**
 
-Set the default UI language at build time. Users can still switch languages — this only changes the initial default. Supported: `en`, `ar`, `be`, `fr`, `de`, `es`, `zh`, `zh-TW`, `vi`, `tr`, `id`, `it`, `pt`, `nl`, `da`.
+Set the default UI language at build time. Users can still switch languages — this only changes the initial default. Supported: `en`, `ar`, `be`, `fr`, `de`, `es`, `zh`, `zh-TW`, `vi`, `tr`, `id`, `it`, `pt`, `nl`, `da`, `ko`, `sv`, `ru`, `pl`, `ja`, `uk`, `sk`, `ca`, `fa`.
 
 ```bash
 docker build --build-arg VITE_DEFAULT_LANGUAGE=fr -t bentopdf .
@@ -803,7 +819,7 @@ systemctl --user daemon-reload
 systemctl --user enable --now bentopdf
 ```
 
-For detailed Quadlet configuration, see [Self-Hosting Docker Guide](https://bentopdf.com/docs/self-hosting/docker).
+For detailed Quadlet configuration, see [Self-Hosting Docker Guide](https://www.bentopdf.com/docs/self-hosting/docker).
 
 ### 🏢 Self-Hosted build (Simple Mode)
 
@@ -859,7 +875,7 @@ Or set the same variables when building from source — see [Custom Branding](#-
 > - **AGPL-3.0** (free): allowed if your deployment publishes its full source code under AGPL — this includes any branding modifications, custom configuration, and any code you build on top of it.
 > - **Commercial license** ($79 lifetime): required for closed-source / proprietary deployments — e.g., a private SaaS where you don't open-source your branding fork or surrounding business logic.
 >
-> See the [Licensing page](https://bentopdf.com/licensing.html) for the full comparison.
+> See the [Licensing page](https://www.bentopdf.com/licensing) for the full comparison.
 
 ### 🎨 Custom Branding
 
@@ -923,7 +939,7 @@ docker run -d -p 3000:8080 \
   ghcr.io/alam00000/bentopdf-simple:latest
 ```
 
-Both methods can be combined — the lists are merged. For the full list of tool IDs, see the [self-hosting docs](https://bentopdf.com/docs/self-hosting/docker#disabling-specific-tools).
+Both methods can be combined — the lists are merged. For the full list of tool IDs, see the [self-hosting docs](https://www.bentopdf.com/docs/self-hosting/docker#disabling-specific-tools).
 
 You can also disable specific features inside the PDF Editor (e.g., redaction, forms) without disabling the entire editor. Add `editorDisabledCategories` to your `config.json`:
 
@@ -933,7 +949,7 @@ You can also disable specific features inside the PDF Editor (e.g., redaction, f
 }
 ```
 
-For the full list of editor categories, see the [self-hosting docs](https://bentopdf.com/docs/self-hosting/docker#disabling-editor-features).
+For the full list of editor categories, see the [self-hosting docs](https://www.bentopdf.com/docs/self-hosting/docker#disabling-editor-features).
 
 ### 🔕 Disabling the GitHub Star Counter
 
@@ -1218,16 +1234,20 @@ BentoPDF was originally built using **HTML**, **CSS**, and **vanilla JavaScript*
 
 ---
 
+## 📦 Other Products
+
+| Product            | Description                                                                                                                           | Links                                                                                                  |
+| :----------------- | :------------------------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------------------------------------------------------- |
+| **Kura**           | PDF standards and preflight engine. Converts to every PDF/A level, PDF/UA, PDF/X, PDF/E and PDF/VT, and can perform preflight checks. | [Website](https://kura.bentopdf.com) · [GitHub](https://github.com/alam00000/bentopdf-kura)            |
+| **Hyper Compress** | The best open source PDF compression engine.                                                                                          | [Website](https://hyper.bentopdf.com) · [GitHub](https://github.com/alam00000/bentopdf-hyper-compress) |
+
+---
+
 ## 🗺️ Roadmap
 
 ### Planned Features:
 
 - **HTML to PDF**: Convert HTML files or web pages into PDF documents.
-- **Markdown to PDF**: Enhanced support for converting `.md` files to PDF.
-- **Convert to PDF/A**: Convert PDFs to the PDF/A archival format.
-- **Edit PDF Content**: Directly edit text and other content within your PDF.
-- **PDF to Office**: Converts PDF files into editable Word, Excel, and PowerPoint formats.
-- **Office to PDF**: Converts Word, Excel, and PowerPoint documents into optimized PDFs.
 
 Contributions and discussions on the roadmap are welcome! Join the conversation via [Discord](https://discord.gg/Bgq3Ay3f2w).
 

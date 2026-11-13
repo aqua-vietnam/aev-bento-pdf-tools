@@ -196,7 +196,7 @@ const engineReady = new Promise((resolve) => {
       }
     : () => {};
   trace('wired');
-  const demo = params.get('demo');
+  const demo = import.meta.env?.DEV ? params.get('demo') : null;
   if (demo) {
     try {
       trace('fetching ' + demo);
@@ -4904,17 +4904,13 @@ function attachParaLongPress(div, para) {
               clientY: t1 ? t1.clientY : sy,
             })
           );
-        } else if (
-          !(
-            state.selection?.kind === 'para' &&
-            state.selection.para?.id === para.id
-          )
-        ) {
+        } else if (ev.type === 'touchend') {
           ev.preventDefault();
-          if (state.editing) endEdit(true);
-          state.selection = { kind: 'para', para };
-          updateChrome();
-          drawOverlay();
+          const t1 = ev.changedTouches[0];
+          beginEdit(para, {
+            x: t1 ? t1.clientX : sx,
+            y: t1 ? t1.clientY : sy,
+          });
         }
         cleanup();
       };
@@ -7083,19 +7079,35 @@ function stagePointHandlers() {
         );
       if (!el) return;
       e.preventDefault();
-      el.dispatchEvent(
-        new MouseEvent('mousedown', {
-          bubbles: true,
-          cancelable: true,
-          clientX: t0.clientX,
-          clientY: t0.clientY,
-          buttons: 1,
-        })
-      );
+      e.stopPropagation();
+      const sx = t0.clientX;
+      const sy = t0.clientY;
+      const tapPara =
+        el.classList.contains('sel-para') && state.selection?.kind === 'para'
+          ? state.selection.para
+          : null;
+      let fired = false;
+      const fire = () => {
+        fired = true;
+        el.dispatchEvent(
+          new MouseEvent('mousedown', {
+            bubbles: true,
+            cancelable: true,
+            clientX: sx,
+            clientY: sy,
+            buttons: 1,
+          })
+        );
+      };
+      if (!tapPara) fire();
       const move = (ev) => {
         const t1 = ev.touches[0];
         if (!t1) return;
         ev.preventDefault();
+        if (!fired) {
+          if (Math.hypot(t1.clientX - sx, t1.clientY - sy) <= 12) return;
+          fire();
+        }
         window.dispatchEvent(
           new MouseEvent('mousemove', {
             clientX: t1.clientX,
@@ -7106,12 +7118,19 @@ function stagePointHandlers() {
       };
       const end = (ev) => {
         const t1 = ev.changedTouches?.[0];
-        window.dispatchEvent(
-          new MouseEvent('mouseup', {
-            clientX: t1 ? t1.clientX : t0.clientX,
-            clientY: t1 ? t1.clientY : t0.clientY,
-          })
-        );
+        if (fired) {
+          window.dispatchEvent(
+            new MouseEvent('mouseup', {
+              clientX: t1 ? t1.clientX : sx,
+              clientY: t1 ? t1.clientY : sy,
+            })
+          );
+        } else if (ev.type === 'touchend') {
+          beginEdit(tapPara, {
+            x: t1 ? t1.clientX : sx,
+            y: t1 ? t1.clientY : sy,
+          });
+        }
         ov.removeEventListener('touchmove', move);
         ov.removeEventListener('touchend', end);
         ov.removeEventListener('touchcancel', end);
@@ -10241,4 +10260,6 @@ export {
   getZoom,
   getDocDescription,
   setOnSaved,
+  endEdit,
+  saveFile,
 };

@@ -40,6 +40,7 @@ BentoPDF uses **i18next** for internationalization (i18n). Currently supported l
 - **Danish** (`da`)
 - **Swedish** (`sv`)
 - **Japanese** (`ja`)
+- **Persian (Farsi)** (`fa`)
 
 The app automatically detects the language from the URL path:
 
@@ -400,7 +401,7 @@ Some strings contain HTML or special characters:
 
 ```json
 {
-  "faq.analytics.answer": "We care about your privacy. BentoPDF does not track personal information. We use <a href=\"https://simpleanalytics.com\" class=\"text-indigo-400 hover:underline\" target=\"_blank\" rel=\"noopener noreferrer\">Simple Analytics</a> solely to see anonymous visit counts."
+  "faq.analytics.answer": "No. BentoPDF does not track you at all. We do not use cookies, analytics, or any tracking scripts, not even on the live website at bentopdf.com. We never know who you are or what you do with the tools."
 }
 ```
 
@@ -408,7 +409,7 @@ When translating, **keep the HTML tags intact**:
 
 ```json
 {
-  "faq.analytics.answer": "Wir schätzen Ihre Privatsphäre. BentoPDF verfolgt keine persönlichen Informationen. Wir verwenden <a href=\"https://simpleanalytics.com\" class=\"text-indigo-400 hover:underline\" target=\"_blank\" rel=\"noopener noreferrer\">Simple Analytics</a> ausschließlich, um anonyme Besucherzahlen zu sehen."
+  "faq.analytics.answer": "Nein. BentoPDF verfolgt Sie in keiner Weise. Wir verwenden keine Cookies, keine Analysetools und keine Tracking-Skripte – auch nicht auf der Live-Website bentopdf.com. Wir wissen nie, wer Sie sind oder was Sie mit den Tools tun."
 }
 ```
 
@@ -617,6 +618,7 @@ Current translation coverage:
 | Danish              | `da`    | ✅ Complete    | Community  |
 | Swedish             | `sv`    | ✅ Complete    | Community  |
 | Japanese            | `ja`    | ✅ Complete    | Community  |
+| Persian (Farsi)     | `fa`    | ✅ Complete    | Community  |
 | Your Language       | `??`    | 🚧 In Progress | You?       |
 
 ---

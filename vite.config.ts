@@ -6,11 +6,9 @@ import type { Connect, Plugin } from 'vite';
 // import basicSsl from '@vitejs/plugin-basic-ssl';
 import tailwindcss from '@tailwindcss/vite';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
-import viteCompression from 'vite-plugin-compression';
 import handlebars from 'vite-plugin-handlebars';
 import { resolve } from 'path';
 import fs from 'fs';
-import { constants as zlibConstants } from 'zlib';
 import { createHash } from 'crypto';
 
 function engineVersion(): string {
@@ -39,6 +37,7 @@ const SUPPORTED_LANGUAGES = [
   'it',
   'nl',
   'pt',
+  'pl',
   'sv',
   'tr',
   'vi',
@@ -48,6 +47,8 @@ const SUPPORTED_LANGUAGES = [
   'ja',
   'uk',
   'sk',
+  'ca',
+  'fa',
 ] as const;
 const LANG_REGEX = new RegExp(
   `^/(${SUPPORTED_LANGUAGES.join('|')})(?:/(.*))?$`
@@ -73,7 +74,9 @@ function loadPages(): Set<string> {
     'privacy',
     'terms',
     'licensing',
-    'tools',
+    'kura',
+    'hyper-compress',
+    'advertise',
     '404',
     'pdf-converter',
     'pdf-editor',
@@ -209,6 +212,18 @@ function createLanguageMiddleware(isDev: boolean): Connect.NextHandleFunction {
           return next();
         }
       }
+    }
+
+    if (pathname === '/blog' || pathname === '/blog/') {
+      req.url = '/blog/index.html' + (queryString ? `?${queryString}` : '');
+      return next();
+    }
+
+    const blogMatch = pathname.match(/^\/blog\/([a-z0-9-]+)\/?$/);
+    if (blogMatch) {
+      req.url =
+        `/blog/${blogMatch[1]}.html` + (queryString ? `?${queryString}` : '');
+      return next();
     }
 
     next();
@@ -375,6 +390,148 @@ function languageRouterPlugin(): Plugin {
   };
 }
 
+function languageRedirectPlugin(): Plugin {
+  const sourcePath = resolve(__dirname, 'src/js/language-redirect.js');
+  let isBuild = false;
+  let fileName = '';
+  return {
+    name: 'language-redirect',
+    configResolved(config) {
+      isBuild = config.command === 'build';
+    },
+    buildStart() {
+      if (!isBuild) return;
+      const hash = createHash('sha256')
+        .update(fs.readFileSync(sourcePath))
+        .digest('hex')
+        .slice(0, 10);
+      fileName = `assets/language-redirect-${hash}.js`;
+    },
+    generateBundle() {
+      if (!isBuild) return;
+      this.emitFile({
+        type: 'asset',
+        fileName,
+        source: fs.readFileSync(sourcePath, 'utf-8'),
+      });
+    },
+    transformIndexHtml: {
+      order: 'post',
+      handler() {
+        const base = `${getBasePath()}/`;
+        return [
+          {
+            tag: 'script',
+            attrs: {
+              src: isBuild
+                ? `${base}${fileName}`
+                : `${base}src/js/language-redirect.js`,
+              'data-language-redirect': '',
+              'data-base': base,
+              'data-languages': SUPPORTED_LANGUAGES.filter(
+                (lang) => lang !== 'en'
+              ).join(','),
+              'data-default-language':
+                process.env.VITE_DEFAULT_LANGUAGE || 'en',
+            },
+            injectTo: 'head-prepend',
+          },
+        ];
+      },
+    },
+  };
+}
+
+type JsonRecord = Record<string, unknown>;
+
+function devPageTranslationsPlugin(): Plugin {
+  const cache = new Map<string, { mtimeMs: number; data: JsonRecord }>();
+  const loadJson = (file: string): JsonRecord => {
+    if (!fs.existsSync(file)) return {};
+    const { mtimeMs } = fs.statSync(file);
+    const cached = cache.get(file);
+    if (cached && cached.mtimeMs === mtimeMs) return cached.data;
+    const data = JSON.parse(fs.readFileSync(file, 'utf-8')) as JsonRecord;
+    cache.set(file, { mtimeMs, data });
+    return data;
+  };
+
+  return {
+    name: 'dev-page-translations',
+    apply: 'serve',
+    enforce: 'post',
+    async transformIndexHtml(html, ctx) {
+      const basePath = getBasePath();
+      let pathname = (ctx.originalUrl ?? ctx.path).split('?')[0];
+      if (basePath && pathname.startsWith(basePath)) {
+        pathname = pathname.slice(basePath.length) || '/';
+      }
+      const lang = pathname.match(LANG_REGEX)?.[1];
+      if (!lang) return html;
+      const rootRelative = html.replace(
+        /(\s(?:src|href)=["'])(?=src\/)/g,
+        `$1${basePath}/`
+      );
+      if (lang === 'en') return rootRelative;
+      const content = loadJson(
+        resolve(__dirname, 'translations', lang, 'content.json')
+      );
+      const resources = {
+        common: loadJson(
+          resolve(__dirname, 'public/locales', lang, 'common.json')
+        ),
+        tools: loadJson(
+          resolve(__dirname, 'public/locales', lang, 'tools.json')
+        ),
+      };
+      const pageName =
+        ctx.path
+          .split('/')
+          .pop()
+          ?.replace(/\.html$/, '') || 'index';
+      const jsdomModule = 'jsdom';
+      const [{ JSDOM }, { processPage }, { applyServerTranslations }] =
+        (await Promise.all([
+          import(jsdomModule),
+          import('./scripts/content-segments.mjs'),
+          import('./scripts/server-translations.mjs'),
+        ])) as [
+          {
+            JSDOM: new (markup: string) => {
+              window: { document: Document };
+              serialize(): string;
+            };
+          },
+          {
+            processPage: (
+              document: Document,
+              pageName: string,
+              options: { translate: (id: string) => string | null }
+            ) => unknown;
+          },
+          {
+            applyServerTranslations: (
+              document: Document,
+              resources: Record<string, JsonRecord>
+            ) => void;
+          },
+        ];
+      const dom = new JSDOM(rootRelative);
+      const document = dom.window.document;
+      document.documentElement.lang = lang;
+      document.documentElement.dir = ['ar', 'fa'].includes(lang)
+        ? 'rtl'
+        : 'ltr';
+      applyServerTranslations(document, resources);
+      processPage(document, pageName, {
+        translate: (id: string) =>
+          typeof content[id] === 'string' ? (content[id] as string) : null,
+      });
+      return dom.serialize();
+    },
+  };
+}
+
 function flattenPagesPlugin(): Plugin {
   return {
     name: 'flatten-pages',
@@ -437,7 +594,7 @@ function swPrecachePlugin(): Plugin {
 
       if (workerAssets.length === 0) {
         throw new Error(
-          '[sw-precache] no PDF.js worker asset found in bundle — service worker would precache nothing'
+          '[sw-precache] no PDF.js worker asset found in bundle; service worker would precache nothing'
         );
       }
 
@@ -498,11 +655,18 @@ function rewriteHtmlPathsPlugin(): Plugin {
 
       for (const fileName of Object.keys(bundle)) {
         if (!fileName.endsWith('.html')) continue;
-        const diskPath = resolve(outDir, fileName);
-        if (!fs.existsSync(diskPath)) continue;
+        const diskPath = [
+          resolve(outDir, fileName),
+          resolve(outDir, fileName.replace(/^src\/pages\//, '')),
+        ].find((candidate) => fs.existsSync(candidate));
+        if (!diskPath) continue;
         const source = fs.readFileSync(diskPath, 'utf8');
         const updated = source
           .replace(hrefRegex, `href="${normalizedBase}`)
+          .replaceAll(
+            `href="${normalizedBase}"`,
+            `href="${normalizedBase.slice(0, -1)}"`
+          )
           .replace(srcRegex, `src="${normalizedBase}`)
           .replace(contentRegex, `content="${normalizedBase}`);
         if (updated !== source) {
@@ -513,8 +677,19 @@ function rewriteHtmlPathsPlugin(): Plugin {
   };
 }
 
-export default defineConfig(() => {
+export default defineConfig(({ command }) => {
   const USE_CDN = process.env.VITE_USE_CDN === 'true';
+  const baseUrl = (process.env.BASE_URL || '/').replace(/\/?$/, '/');
+  const docsUrl =
+    baseUrl === '/' &&
+    (command === 'serve' || process.env.INCLUDE_DOCS === 'true')
+      ? '/docs/'
+      : 'https://www.bentopdf.com/docs';
+  const showAds =
+    command === 'serve' ||
+    ['bentopdf.com', 'www.bentopdf.com'].includes(
+      process.env.VERCEL_PROJECT_PRODUCTION_URL ?? ''
+    );
 
   if (USE_CDN) {
     console.log('[Vite] Using CDN for WASM files (with local fallback)');
@@ -533,14 +708,18 @@ export default defineConfig(() => {
         partialDirectory: resolve(__dirname, 'src/partials'),
         context: {
           baseUrl: (process.env.BASE_URL || '/').replace(/\/?$/, '/'),
+          docsUrl,
           simpleMode: process.env.SIMPLE_MODE === 'true',
           brandName: process.env.VITE_BRAND_NAME || '',
           brandLogo: process.env.VITE_BRAND_LOGO || '',
           footerText: process.env.VITE_FOOTER_TEXT || '',
           appVersion: process.env.npm_package_version || 'Unknown',
+          showAds,
         },
       }),
       languageRouterPlugin(),
+      devPageTranslationsPlugin(),
+      languageRedirectPlugin(),
       flattenPagesPlugin(),
       rewriteHtmlPathsPlugin(),
       swPrecachePlugin(),
@@ -552,30 +731,6 @@ export default defineConfig(() => {
           global: false,
           process: true,
         },
-      }),
-      viteCompression({
-        algorithm: 'brotliCompress',
-        ext: '.br',
-        threshold: 1024,
-        filter: /\.(js|mjs|json|css|html|wasm|svg)$/i,
-        compressionOptions: {
-          params: {
-            [zlibConstants.BROTLI_PARAM_QUALITY]: 11,
-            [zlibConstants.BROTLI_PARAM_MODE]:
-              zlibConstants.BROTLI_MODE_GENERIC,
-          },
-        },
-        deleteOriginFile: false,
-      }),
-      viteCompression({
-        algorithm: 'gzip',
-        ext: '.gz',
-        threshold: 1024,
-        filter: /\.(js|mjs|json|css|html|wasm|svg)$/i,
-        compressionOptions: {
-          level: 9,
-        },
-        deleteOriginFile: false,
       }),
     ],
     define: {
@@ -602,10 +757,30 @@ export default defineConfig(() => {
     },
     optimizeDeps: {
       include: ['pdfkit', 'blob-stream'],
-      exclude: ['coherentpdf', 'wasm-vips', 'bentopdf-pdfium'],
+      exclude: [
+        'coherentpdf',
+        'wasm-vips',
+        'bentopdf-pdfium',
+        'hyper-compress-wasm',
+      ],
     },
     server: {
       host: process.env.VITE_DEV_HOST || 'localhost',
+      proxy: {
+        '/docs': {
+          target: 'http://localhost:5174',
+          ws: true,
+          configure: (proxy) => {
+            proxy.on('error', (_error, _req, res) => {
+              if (!('writeHead' in res) || res.headersSent) return;
+              res.writeHead(502, { 'Content-Type': 'text/plain' });
+              res.end(
+                'The docs dev server is not running. Start it with: npm run docs:dev'
+              );
+            });
+          },
+        },
+      },
       watch: {
         ignored: ['!**/node_modules/bentopdf-pdfium/**'],
       },
@@ -633,7 +808,20 @@ export default defineConfig(() => {
           privacy: resolve(__dirname, 'privacy.html'),
           terms: resolve(__dirname, 'terms.html'),
           licensing: resolve(__dirname, 'licensing.html'),
-          tools: resolve(__dirname, 'tools.html'),
+          kura: resolve(__dirname, 'kura.html'),
+          'hyper-compress': resolve(__dirname, 'hyper-compress.html'),
+          ...(showAds
+            ? { advertise: resolve(__dirname, 'advertise.html') }
+            : {}),
+          ...Object.fromEntries(
+            fs
+              .readdirSync(resolve(__dirname, 'blog'))
+              .filter((f) => f.endsWith('.html'))
+              .map((f) => [
+                `blog-${f.replace('.html', '')}`,
+                resolve(__dirname, 'blog', f),
+              ])
+          ),
           '404': resolve(__dirname, '404.html'),
           // Category Hub Pages
           'pdf-converter': resolve(__dirname, 'pdf-converter.html'),
@@ -655,6 +843,30 @@ export default defineConfig(() => {
           'merge-pdf': resolve(__dirname, 'src/pages/merge-pdf.html'),
           'split-pdf': resolve(__dirname, 'src/pages/split-pdf.html'),
           'compress-pdf': resolve(__dirname, 'src/pages/compress-pdf.html'),
+          'compress-pdf-to-100kb': resolve(
+            __dirname,
+            'src/pages/compress-pdf-to-100kb.html'
+          ),
+          'compress-pdf-to-200kb': resolve(
+            __dirname,
+            'src/pages/compress-pdf-to-200kb.html'
+          ),
+          'compress-pdf-to-500kb': resolve(
+            __dirname,
+            'src/pages/compress-pdf-to-500kb.html'
+          ),
+          'compress-pdf-to-1mb': resolve(
+            __dirname,
+            'src/pages/compress-pdf-to-1mb.html'
+          ),
+          'compress-pdf-to-2mb': resolve(
+            __dirname,
+            'src/pages/compress-pdf-to-2mb.html'
+          ),
+          'compress-pdf-for-email': resolve(
+            __dirname,
+            'src/pages/compress-pdf-for-email.html'
+          ),
           'edit-pdf': resolve(__dirname, 'src/pages/edit-pdf.html'),
           'edit-pdf-text': resolve(__dirname, 'src/pages/edit-pdf-text.html'),
           'jpg-to-pdf': resolve(__dirname, 'src/pages/jpg-to-pdf.html'),
@@ -731,9 +943,9 @@ export default defineConfig(() => {
             __dirname,
             'src/pages/remove-metadata.html'
           ),
-          'decrypt-pdf': resolve(__dirname, 'src/pages/decrypt-pdf.html'),
+          'unlock-pdf': resolve(__dirname, 'src/pages/unlock-pdf.html'),
           'flatten-pdf': resolve(__dirname, 'src/pages/flatten-pdf.html'),
-          'encrypt-pdf': resolve(__dirname, 'src/pages/encrypt-pdf.html'),
+          'protect-pdf': resolve(__dirname, 'src/pages/protect-pdf.html'),
           'linearize-pdf': resolve(__dirname, 'src/pages/linearize-pdf.html'),
           'remove-restrictions': resolve(
             __dirname,
@@ -766,7 +978,7 @@ export default defineConfig(() => {
           'pdf-to-tiff': resolve(__dirname, 'src/pages/pdf-to-tiff.html'),
           'pdf-to-cbz': resolve(__dirname, 'src/pages/pdf-to-cbz.html'),
           'pdf-to-webp': resolve(__dirname, 'src/pages/pdf-to-webp.html'),
-          'pdf-to-docx': resolve(__dirname, 'src/pages/pdf-to-docx.html'),
+          'pdf-to-word': resolve(__dirname, 'src/pages/pdf-to-word.html'),
           'extract-images': resolve(__dirname, 'src/pages/extract-images.html'),
           'pdf-to-markdown': resolve(
             __dirname,

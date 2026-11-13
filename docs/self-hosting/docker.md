@@ -77,14 +77,19 @@ podman-compose up -d
 # Dockerfile
 FROM node:20-alpine AS builder
 WORKDIR /app
+ENV HUSKY=0
 COPY package*.json ./
+COPY vendor ./vendor
 RUN npm ci
 COPY . .
 RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/security-headers.conf /etc/nginx/security-headers.conf
+COPY --from=builder /app/security-headers-docs.conf /etc/nginx/security-headers-docs.conf
 COPY nginx.conf /etc/nginx/nginx.conf
+RUN mkdir -p /etc/nginx/tmp
 EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
 ```
@@ -98,26 +103,36 @@ docker run -d -p 3000:8080 bentopdf:custom
 
 ## Environment Variables
 
-| Variable                             | Description                                                                                                                  | Default                                                        |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `SIMPLE_MODE`                        | Build the Self-Hosted variant (hides bentopdf.com marketing chrome — hero, FAQ, testimonials, footer). All PDF tools remain. | `false`                                                        |
-| `BASE_URL`                           | Deploy to subdirectory                                                                                                       | `/`                                                            |
-| `VITE_WASM_PYMUPDF_URL`              | PyMuPDF WASM module URL                                                                                                      | `https://cdn.jsdelivr.net/npm/@bentopdf/pymupdf-wasm@0.11.16/` |
-| `VITE_WASM_GS_URL`                   | Ghostscript WASM module URL                                                                                                  | `https://cdn.jsdelivr.net/npm/@bentopdf/gs-wasm@0.1.1/assets/` |
-| `VITE_WASM_CPDF_URL`                 | CoherentPDF WASM module URL                                                                                                  | `https://cdn.jsdelivr.net/npm/coherentpdf@2.5.5/dist/`         |
-| `VITE_TESSERACT_WORKER_URL`          | OCR worker script URL                                                                                                        | _(empty; use Tesseract.js default CDN)_                        |
-| `VITE_TESSERACT_CORE_URL`            | OCR core runtime directory                                                                                                   | _(empty; use Tesseract.js default CDN)_                        |
-| `VITE_TESSERACT_LANG_URL`            | OCR traineddata directory                                                                                                    | _(empty; use Tesseract.js default CDN)_                        |
-| `VITE_TESSERACT_AVAILABLE_LANGUAGES` | Comma-separated OCR languages exposed in UI                                                                                  | _(empty; show full catalog)_                                   |
-| `VITE_OCR_FONT_BASE_URL`             | OCR text-layer font directory                                                                                                | _(empty; use remote Noto font URLs)_                           |
-| `VITE_DEFAULT_LANGUAGE`              | Default UI language                                                                                                          | `en`                                                           |
-| `VITE_BRAND_NAME`                    | Custom brand name                                                                                                            | `BentoPDF`                                                     |
-| `VITE_BRAND_LOGO`                    | Logo path relative to `public/`                                                                                              | `images/favicon-no-bg.svg`                                     |
-| `VITE_FOOTER_TEXT`                   | Custom footer/copyright text                                                                                                 | `© 2026 BentoPDF. All rights reserved.`                        |
-| `DISABLE_TOOLS`                      | Comma-separated tool IDs to hide                                                                                             | _(empty; all tools enabled)_                                   |
-| `DISABLE_GITHUB_STARS`               | Skip the GitHub star-count fetch on page load and drop `api.github.com` from the CSP. Simple Mode builds always skip it.     | `false`                                                        |
+| Variable                             | Description                                                                                                                                                              | Default                                                        |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| `SIMPLE_MODE`                        | Build the Self-Hosted variant (hides bentopdf.com marketing chrome — hero, FAQ, testimonials, footer). All PDF tools remain.                                             | `false`                                                        |
+| `BASE_URL`                           | Deploy to subdirectory                                                                                                                                                   | `/`                                                            |
+| `VITE_WASM_PYMUPDF_URL`              | PyMuPDF WASM module URL                                                                                                                                                  | `https://cdn.jsdelivr.net/npm/@bentopdf/pymupdf-wasm@0.11.16/` |
+| `VITE_WASM_GS_URL`                   | Ghostscript WASM module URL                                                                                                                                              | `https://cdn.jsdelivr.net/npm/@bentopdf/gs-wasm@0.1.1/assets/` |
+| `VITE_WASM_CPDF_URL`                 | CoherentPDF WASM module URL                                                                                                                                              | `https://cdn.jsdelivr.net/npm/coherentpdf@2.5.5/dist/`         |
+| `VITE_TESSERACT_WORKER_URL`          | OCR worker script URL                                                                                                                                                    | _(empty; use Tesseract.js default CDN)_                        |
+| `VITE_TESSERACT_CORE_URL`            | OCR core runtime directory                                                                                                                                               | _(empty; use Tesseract.js default CDN)_                        |
+| `VITE_TESSERACT_LANG_URL`            | OCR traineddata directory                                                                                                                                                | _(empty; use Tesseract.js default CDN)_                        |
+| `VITE_TESSERACT_AVAILABLE_LANGUAGES` | Comma-separated OCR languages exposed in UI                                                                                                                              | _(empty; show full catalog)_                                   |
+| `VITE_OCR_FONT_BASE_URL`             | OCR text-layer font directory                                                                                                                                            | _(empty; use remote Noto font URLs)_                           |
+| `VITE_DEFAULT_LANGUAGE`              | Default UI language                                                                                                                                                      | `en`                                                           |
+| `VITE_BRAND_NAME`                    | Custom brand name                                                                                                                                                        | `BentoPDF`                                                     |
+| `VITE_BRAND_LOGO`                    | Logo path relative to `public/`                                                                                                                                          | `images/favicon-no-bg.svg`                                     |
+| `VITE_FOOTER_TEXT`                   | Custom footer/copyright text                                                                                                                                             | `© 2026 BentoPDF. All rights reserved.`                        |
+| `DISABLE_TOOLS`                      | Comma-separated tool IDs to hide                                                                                                                                         | _(empty; all tools enabled)_                                   |
+| `DISABLE_GITHUB_STARS`               | Skip the GitHub star-count fetch on page load and drop `api.github.com` from the CSP. Simple Mode builds always skip it.                                                 | `false`                                                        |
+| `SITE_URL`                           | Public URL written into canonical, hreflang and sitemap links. Leave it at the default unless you want search engines to treat your deployment as its own site.          | `https://www.bentopdf.com`                                     |
+| `ALLOW_INDEXING`                     | With a custom `SITE_URL`, every page is marked `noindex` so your copy doesn't compete with bentopdf.com in search results. Set to `true` to let search engines index it. | `false`                                                        |
+| `COMPRESSION_MODE`                   | Precompressed copies to add: `o` none, `g` `.gz` (served by the image's nginx), `b` `.br`, `all` both. The image's nginx can't serve `.br`.                              | `o`                                                            |
 
 WASM module URLs are pre-configured with CDN defaults — all advanced features work out of the box. Override these for air-gapped or self-hosted deployments.
+
+### Search engines
+
+By default, every page points search engines to bentopdf.com as the original, so your deployment doesn't show up as a duplicate. You don't need to change anything for a private or internal instance.
+
+- **Keep your instance out of search results entirely:** run the container with `-e ROBOTS_NOINDEX=true`. This only needs a restart, not a rebuild.
+- **Make your instance its own site in search results:** build with `--build-arg SITE_URL=https://your-domain.example --build-arg ALLOW_INDEXING=true`. Without `ALLOW_INDEXING=true`, a custom `SITE_URL` marks every page `noindex`.
 
 ### Content-Security-Policy
 
@@ -126,14 +141,15 @@ The nginx image ships with an enforcing `Content-Security-Policy` header. The CS
 As a result:
 
 - If you override `VITE_CORS_PROXY_URL` or `VITE_WASM_*_URL` at build time, the CSP permits those origins automatically — no extra config needed.
-- If you configure custom WASM URLs at _runtime_ via the in-app Advanced Settings page, those origins are **not** in the CSP and the browser will block fetches to them. Runtime configuration is intended for experimentation; for permanent custom URLs set the matching `VITE_*` build arg.
-- Air-gapped deployments that override all three `VITE_WASM_*_URL` values also get the public `cdn.jsdelivr.net` removed from CSP (each default is replaced, not appended). Similarly, setting `VITE_CORS_PROXY_URL` replaces the public `bentopdf-cors-proxy.bentopdf.workers.dev` default.
+- For URLs on `cdn.jsdelivr.net`, `script-src` allows only the exact versioned package folder, for example `https://cdn.jsdelivr.net/npm/@bentopdf/pymupdf-wasm@0.11.16/`, not the whole CDN. jsDelivr serves any public npm package or GitHub repository, so allowing the whole host would let any of them run on your instance. URLs on any other host are allowed by origin.
+- If you configure custom WASM URLs at _runtime_ via the in-app Advanced Settings page, those origins are **not** in the CSP and the browser will block fetches to them. This also applies to a different version of the same package on `cdn.jsdelivr.net`, because only the version set at build time is allowed. Runtime configuration is intended for experimentation; for permanent custom URLs set the matching `VITE_*` build arg.
+- Air-gapped deployments that override all three `VITE_WASM_*_URL` values also get those `cdn.jsdelivr.net` package folders removed from CSP (each default is replaced, not appended). The Tesseract OCR defaults on `cdn.jsdelivr.net` stay in the policy until you also set the three `VITE_TESSERACT_*` values. Similarly, setting `VITE_CORS_PROXY_URL` replaces the public `bentopdf-cors-proxy.bentopdf.workers.dev` default.
 
-The CSP includes `'unsafe-eval'` in `script-src` because the LibreOffice WASM runtime (used by Word/Excel/PowerPoint conversion tools) compiles internal dispatch code via `new Function()`. Removing it would break all LibreOffice-backed tools. If you build in `SIMPLE_MODE` (without LibreOffice), you can manually edit the generated `security-headers.conf` to drop `'unsafe-eval'` for a stricter policy.
+The CSP includes `'unsafe-eval'` in `script-src` because the LibreOffice WASM runtime (used by Word/Excel/PowerPoint conversion tools) and the wasm-vips image library (used by PDF to TIFF) compile internal dispatch code via `new Function()`. Removing it would break those tools. If you build in `SIMPLE_MODE` (without LibreOffice) and do not need PDF to TIFF, you can manually edit the generated `security-headers.conf` to drop `'unsafe-eval'` for a stricter policy.
 
 For OCR, leave the `VITE_TESSERACT_*` variables empty to use the default online assets, or set all three together for self-hosted/offline OCR. Partial OCR overrides are rejected because the worker, core runtime, and traineddata directory must match. For fully offline searchable PDF output, also set `VITE_OCR_FONT_BASE_URL` so the OCR text-layer fonts are loaded from your internal server instead of the public Noto font URLs.
 
-`VITE_DEFAULT_LANGUAGE` sets the UI language for first-time visitors. Supported values: `en`, `ar`, `be`, `fr`, `de`, `es`, `zh`, `zh-TW`, `vi`, `tr`, `id`, `it`, `pt`, `nl`, `da`. Users can still switch languages — this only changes the default.
+`VITE_DEFAULT_LANGUAGE` sets the UI language for first-time visitors. Supported values: `en`, `ar`, `be`, `fr`, `de`, `es`, `zh`, `zh-TW`, `vi`, `tr`, `id`, `it`, `pt`, `nl`, `da`, `ko`, `sv`, `ru`, `pl`, `ja`, `uk`, `sk`, `ca`, `fa`. Users can still switch languages — this only changes the default.
 
 Example:
 
@@ -244,6 +260,8 @@ You can also disable specific features inside the PDF Editor (e.g., redaction, a
 
 **Shapes:** `annotation-shape`, `annotation-rectangle`, `annotation-circle`, `annotation-line`, `annotation-arrow`, `annotation-polygon`, `annotation-polyline`
 
+**Measurement:** `annotation-measurement`, `mode-measure`, `annotation-distance`, `annotation-perimeter`, `annotation-area`
+
 **Form:** `form`, `form-textfield`, `form-checkbox`, `form-radio`, `form-select`, `form-listbox`, `form-fill-mode`
 
 **Redaction:** `redaction`, `redaction-area`, `redaction-text`, `redaction-apply`, `redaction-clear`
@@ -254,7 +272,7 @@ You can also disable specific features inside the PDF Editor (e.g., redaction, a
 
 **Panel:** `panel`, `panel-sidebar`, `panel-search`, `panel-comment`
 
-**Tools:** `tools`, `pan`, `pointer`, `capture`
+**Tools:** `tools`, `pan`, `pointer`, `capture`, `organize`
 
 **Selection:** `selection`, `selection-copy`
 
